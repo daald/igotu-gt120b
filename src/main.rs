@@ -49,9 +49,8 @@ block_on(device.control_out(ControlOut {
     cmd_Model(&interface);
 
     // IdentificationCommand
-    simple_cmd(&interface,
-        [0x93,0x0a,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x63].to_vec(),
-        hex!("930011a623630d0102000a4d2f660d718c18000210").to_vec()); //unknown
+    cmd_Identification(&interface);
+
 
 
 
@@ -133,9 +132,11 @@ fn cmd_NmeaSwitch(interface: &Interface, _enable: bool) {
         command,
         [0x93,0x00,0x00,0x6d].to_vec());
     /*
-    simple_cmd(&interface,
-        [0x93,0x01,0x01,0x03,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x68].to_vec(),
-        [0x93,0x00,0x00,0x6d].to_vec());
+	NmeaSwitchCommand
+	3347	55.005277	host	3.8.1	USB	64	URB_BULK in						0	
+	3399	55.554806	host	3.8.1	USB	80	URB_BULK out	93010103000000000000000000000068	16
+	3400	55.554842	3.8.1	host	USB	64	URB_BULK out						0	
+	3401	55.555664	3.8.1	host	USB	68	URB_BULK in	9300006d				4	
     */
 }
 
@@ -148,13 +149,38 @@ fn cmd_Model(interface: &Interface) {
         command,
         [0x93,0x00,0x03,0xc2,0x20,0x15,0x73].to_vec());
     /*
-    simple_cmd(&interface,
-        [0x93,0x05,0x04,0x00,0x03,0x01,0x9f,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0xc1].to_vec(),
-        [0x93,0x00,0x03,0xc2,0x20,0x15,0x73].to_vec());
+	ModelCommand
+	3402	55.555916	host	3.8.1	USB	64	URB_BULK in						0	
+	3403	55.569024	host	3.8.1	USB	80	URB_BULK out	9305040003019f0000000000000000c1	16
+	3404	55.569095	3.8.1	host	USB	64	URB_BULK out						0	
+	3405	55.569261	3.8.1	host	USB	71	URB_BULK in	930003c2201573				7	
     */
 }
 
 
+fn cmd_Identification(interface: &Interface) {
+    let mut command = [0x93,0x0a].to_vec();
+
+    padAndChecksum(&mut command);
+    simple_cmd(&interface,
+        command,
+        hex!("930011a623630d0102000a2b2e660d718c18000233").to_vec());
+    /*
+	IdentificationCommand
+	3406	55.569581	host	3.8.1	USB	64	URB_BULK in						0	
+	3407	55.569800	host	3.8.1	USB	80	URB_BULK out	930a0000000000000000000000000063	16
+	3408	55.569849	3.8.1	host	USB	64	URB_BULK out						0	
+	3409	55.570052	3.8.1	host	USB	85	URB_BULK in	930011a623630d0102000a2b2e660d718c18000233	21	
+
+    simple_cmd(&interface,
+        [0x93,0x0a,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x63].to_vec(),
+        hex!("930011a623630d0102000a2b2e660d718c18000233").to_vec()); //unknown
+
+    //  received [93, 00, 11, A6, 23, 63, 0D, 01, 02, 00, 0A, 4D, 2F, 66, 0D, 71, 8C, 18, 00, 02, 10]
+    // expected: [93, 00, 11, A6, 23, 63, 0D, 01, 02, 00, 0A, 2B, 2E, 66, 0D, 71, 8C, 18, 00, 02, 33]
+    //                                                        ^^  ^^                              ^^
+    */
+}
 
 
 
