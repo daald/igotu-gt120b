@@ -46,7 +46,8 @@ block_on(device.control_out(ControlOut {
     cmd_NmeaSwitch(&interface, true);
 
     // ModelCommand
-    cmd_Model(&interface);
+    let model = cmd_Model(&interface);
+    println!("Model: {model}");
 
     // IdentificationCommand
     cmd_Identification(&interface);
@@ -81,14 +82,21 @@ block_on(device.control_out(ControlOut {
 
 
 
-fn verify_answer_checksum(answer: &Vec<u8>) {
+fn verify_answer_checksum_extract_payload(answer: Vec<u8>) -> Vec<u8> {
+    if answer[0] != 0x93 {
+        panic!("Invalid prefix in answer. expected: 0x93");
+    }
     let sum:u8 = answer[..answer.len()-1].iter().sum();
-    //let sum:u8 = answer.drain(..answer.len()-1).sum();
     let expected:u8 = 0x00 - sum;
     let actual = answer[answer.len()-1];
     if actual != expected {
         panic!("Checksum error in answer. actual: {actual:02x}, expected: {expected:02x}")
     }
+    let payloadsize:u16 = (answer[1] as u16)<<8 | (answer[2] as u16);
+    if payloadsize as u32 != (answer.len()-4) as u32 {
+        panic!("Invalid playload size. declared: {payloadsize:02x}, actual: {:02x}", answer.len()-4);
+    }
+    return answer[3..(answer.len()-1)].to_vec();
 }
 
 
@@ -109,9 +117,7 @@ fn read_answer(mut in_queue: Queue<RequestBuffer>) -> Vec<u8> {
             //break;
         }
 
-        verify_answer_checksum(&result.data);
-
-        return result.data;
+        return verify_answer_checksum_extract_payload(result.data);
     }
 }
 
@@ -139,9 +145,9 @@ fn cmd_NmeaSwitch(interface: &Interface, _enable: bool) {
     command.push(0x03); // 120b needs 0x03. this was the value for disabled, but it means enabled for 120b
 
     padAndChecksum(&mut command);
-    simple_cmd(&interface,
+    simple_cmd_eqresult(&interface,
         command,
-        [0x93,0x00,0x00,0x6d].to_vec());
+        vec![]); //[0x93,0x00,0x00,0x6d].to_vec());
     /*
 	NmeaSwitchCommand
 	3347	55.005277	host	3.8.1	USB	64	URB_BULK in						0	
@@ -152,13 +158,12 @@ fn cmd_NmeaSwitch(interface: &Interface, _enable: bool) {
 }
 
 
-fn cmd_Model(interface: &Interface) {
+fn cmd_Model(interface: &Interface) -> Model {
     let mut command = [0x93,0x05,0x04,0x00,0x03,0x01,0x9f].to_vec();
 
     padAndChecksum(&mut command);
-    simple_cmd(&interface,
-        command,
-        [0x93,0x00,0x03,0xc2,0x20,0x15,0x73].to_vec());
+    let answer = simple_cmd_return(&interface,
+        command); //[0x93,0x00,0x03,0xc2,0x20,0x15,0x73].to_vec());
     /*
 	ModelCommand
 	3402	55.555916	host	3.8.1	USB	64	URB_BULK in						0	
@@ -166,6 +171,27 @@ fn cmd_Model(interface: &Interface) {
 	3404	55.569095	3.8.1	host	USB	64	URB_BULK out						0	
 	3405	55.569261	3.8.1	host	USB	71	URB_BULK in	930003c2201573				7	
     */
+
+    if answer[0]!=0xc2 || answer[1]!=0x20 {
+        panic!("Unexpected answer: {answer:02x?}");
+    }
+
+    let model = answer[2];
+    match model{
+        0x13 => return Model::Gt100,
+        0x14 => return Model::Gt200,
+        0x15 => return Model::Gt120,
+        0x17 => return Model::Gt200e,
+        _ => panic!("Unknown model: {:02x}", answer[2]),
+    }
+}
+
+#[derive(strum_macros::Display)]
+enum Model {
+    Gt100,
+    Gt200,
+    Gt120,  // also for 120b
+    Gt200e,
 }
 
 
@@ -173,7 +199,7 @@ fn cmd_Identification(interface: &Interface) {
     let mut command = [0x93,0x0a].to_vec();
 
     padAndChecksum(&mut command);
-    simple_cmd(&interface,
+    simple_cmd_eqresult(&interface,
         command,
         hex!("930011a623630d0102000a2b2e660d718c18000233").to_vec());
     /*
@@ -195,7 +221,7 @@ fn cmd_Identification(interface: &Interface) {
 
 
 
-fn simple_cmd(interface: &Interface, to_device: Vec<u8>, expect_from_device: Vec<u8>) {
+fn simple_cmd_eqresult(interface: &Interface, to_device: Vec<u8>, expect_from_device: Vec<u8>) {
     println!("Simple cmd {to_device:02X?}");
 
     let queue = interface.bulk_in_queue(BULK_EP_IN);
@@ -207,5 +233,20 @@ fn simple_cmd(interface: &Interface, to_device: Vec<u8>, expect_from_device: Vec
     println!("  awaiting answer");
     let answer = read_answer(queue);
     //println!("  r={answer:02X?}");
-    check_full_answer(answer, expect_from_device)
+    check_full_answer(answer, expect_from_device);
+}
+
+fn simple_cmd_return(interface: &Interface, to_device: Vec<u8>) -> Vec<u8> {
+    println!("Simple cmd {to_device:02X?}");
+
+    let queue = interface.bulk_in_queue(BULK_EP_IN);
+
+    block_on(interface.bulk_out(BULK_EP_OUT, to_device))
+        .into_result()
+        .unwrap();
+
+    println!("  awaiting answer");
+    let answer = read_answer(queue);
+    //println!("  r={answer:02X?}");
+    return answer;
 }
