@@ -1,5 +1,7 @@
 use futures_lite::future::block_on;
-use nusb::transfer::{ RequestBuffer, ControlOut, ControlType, Recipient, Queue, Completion };
+use nusb::transfer::{ RequestBuffer, ControlOut, ControlType, Recipient, Queue };
+use nusb::{ Interface };
+use hex_literal::hex;
 
 
 const DEVID_VENDOR  :u16 = 0x0df7;
@@ -40,9 +42,28 @@ block_on(device.control_out(ControlOut {
     // set line coding request - probably not needed
     //sync_send_control(handle, 0x21, 0x20 /* set line coding*/, 0, 0, "\x00\xc2\x01\x00\x00\x00\x08", 7, 2000 );
 
-    simple_cmd(interface,
+    // NmeaSwitchCommand enable=1
+    simple_cmd(&interface,
         [0x93,0x01,0x01,0x03,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x68].to_vec(),
         [0x93,0x00,0x00,0x6d].to_vec());
+
+    // ModelCommand
+    simple_cmd(&interface,
+        [0x93,0x05,0x04,0x00,0x03,0x01,0x9f,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0xc1].to_vec(),
+        [0x93,0x00,0x03,0xc2,0x20,0x15,0x73].to_vec());
+
+    // IdentificationCommand
+    simple_cmd(&interface,
+        [0x93,0x0a,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x63].to_vec(),
+        hex!("930011a623630d0102000a4d2f660d718c18000210").to_vec()); //unknown
+
+
+
+
+}
+
+
+
 
 /*
     loop {
@@ -65,7 +86,7 @@ block_on(device.control_out(ControlOut {
 
 
 
-}
+
 
 
 fn read_answer(mut in_queue: Queue<RequestBuffer>) -> Vec<u8> {
@@ -74,7 +95,7 @@ fn read_answer(mut in_queue: Queue<RequestBuffer>) -> Vec<u8> {
             in_queue.submit(RequestBuffer::new(256));
         }
         let result = block_on(in_queue.next_complete());
-        println!("r:{result:?}");
+        println!("  r:{result:?}");
 // r:Completion { data: [147, 0, 0, 109], status: Ok(()) }
 //    if (memcmp(combuf_in, "\x93\x00\x00\x6d", 4) == 0) {
 //        printf("received success\n");
@@ -96,17 +117,17 @@ fn check_full_answer(answer: Vec<u8>, expected: Vec<u8>) {
     println!("all good")
 }
 
-fn simple_cmd(interface: Interface, to_device: Vec<u8>, expect_from_device: Vec<u8>) {
-    let mut queue = interface.bulk_in_queue(BULK_EP_IN);
+fn simple_cmd(interface: &Interface, to_device: Vec<u8>, expect_from_device: Vec<u8>) {
+    println!("Simple cmd");
 
-    println!("have queue");
+    let queue = interface.bulk_in_queue(BULK_EP_IN);
 
     block_on(interface.bulk_out(BULK_EP_OUT, to_device))
         .into_result()
         .unwrap();
 
-    println!("sent bulk");
+    println!("  awaiting answer");
     let answer = read_answer(queue);
-    println!("rr:{answer:?}");
+    //println!("  r={answer:?}");
     check_full_answer(answer, expect_from_device)
 }
