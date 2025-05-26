@@ -43,9 +43,7 @@ block_on(device.control_out(ControlOut {
     //sync_send_control(handle, 0x21, 0x20 /* set line coding*/, 0, 0, "\x00\xc2\x01\x00\x00\x00\x08", 7, 2000 );
 
     // NmeaSwitchCommand enable=1
-    simple_cmd(&interface,
-        [0x93,0x01,0x01,0x03,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x68].to_vec(),
-        [0x93,0x00,0x00,0x6d].to_vec());
+    cmd_NmeaSwitch(&interface, true);
 
     // ModelCommand
     simple_cmd(&interface,
@@ -56,7 +54,6 @@ block_on(device.control_out(ControlOut {
     simple_cmd(&interface,
         [0x93,0x0a,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x63].to_vec(),
         hex!("930011a623630d0102000a4d2f660d718c18000210").to_vec()); //unknown
-
 
 
 
@@ -71,7 +68,7 @@ block_on(device.control_out(ControlOut {
             queue.submit(RequestBuffer::new(256));
         }
         let result = block_on(queue.next_complete());
-        println!("r:{result:?}");
+        println!("r:{result:02X?}");
 // r:Completion { data: [147, 0, 0, 109], status: Ok(()) }
 //    if (memcmp(combuf_in, "\x93\x00\x00\x6d", 4) == 0) {
 //        printf("received success\n");
@@ -95,7 +92,7 @@ fn read_answer(mut in_queue: Queue<RequestBuffer>) -> Vec<u8> {
             in_queue.submit(RequestBuffer::new(256));
         }
         let result = block_on(in_queue.next_complete());
-        println!("  r:{result:?}");
+        println!("  r:{result:02X?}");
 // r:Completion { data: [147, 0, 0, 109], status: Ok(()) }
 //    if (memcmp(combuf_in, "\x93\x00\x00\x6d", 4) == 0) {
 //        printf("received success\n");
@@ -112,13 +109,42 @@ fn read_answer(mut in_queue: Queue<RequestBuffer>) -> Vec<u8> {
 
 fn check_full_answer(answer: Vec<u8>, expected: Vec<u8>) {
     if answer != expected {
-        panic!("Wrong answer. received {answer:?}. expected: {expected:?}");
+        panic!("Wrong answer. received {answer:02X?}. expected: {expected:02X?}");
     }
     println!("all good")
 }
 
+
+
+fn padAndChecksum(rawCommand: &mut Vec<u8>) {
+    assert!(rawCommand.len() < 16);
+    rawCommand.resize(15, 0);
+    let s : u8 = rawCommand.iter().sum();
+    rawCommand.push(0x00 - s);
+    assert_eq!(rawCommand.len(), 16);
+}
+
+fn cmd_NmeaSwitch(interface: &Interface, _enable: bool) {
+    let mut command = [0x93,0x01,0x01].to_vec();
+    
+    // ignoring this: command[3] = enable ? 0x00 : 0x03;
+    command.push(0x03); // 120b needs 0x03. this was the value for disabled, but it means enabled for 120b
+
+    padAndChecksum(&mut command);
+    simple_cmd(&interface,
+        command,
+        [0x93,0x00,0x00,0x6d].to_vec());
+    /*
+    simple_cmd(&interface,
+        [0x93,0x01,0x01,0x03,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x68].to_vec(),
+        [0x93,0x00,0x00,0x6d].to_vec());
+    */
+}
+
+
+
 fn simple_cmd(interface: &Interface, to_device: Vec<u8>, expect_from_device: Vec<u8>) {
-    println!("Simple cmd");
+    println!("Simple cmd {to_device:02X?}");
 
     let queue = interface.bulk_in_queue(BULK_EP_IN);
 
@@ -128,6 +154,6 @@ fn simple_cmd(interface: &Interface, to_device: Vec<u8>, expect_from_device: Vec
 
     println!("  awaiting answer");
     let answer = read_answer(queue);
-    //println!("  r={answer:?}");
+    //println!("  r={answer:02X?}");
     check_full_answer(answer, expect_from_device)
 }
