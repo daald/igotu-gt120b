@@ -81,6 +81,15 @@ block_on(device.control_out(ControlOut {
 
 
 
+fn verify_answer_checksum(answer: &Vec<u8>) {
+    let sum:u8 = answer[..answer.len()-1].iter().sum();
+    //let sum:u8 = answer.drain(..answer.len()-1).sum();
+    let expected:u8 = 0x00 - sum;
+    let actual = answer[answer.len()-1];
+    if actual != expected {
+        panic!("Checksum error in answer. actual: {actual:02x}, expected: {expected:02x}")
+    }
+}
 
 
 fn read_answer(mut in_queue: Queue<RequestBuffer>) -> Vec<u8> {
@@ -100,6 +109,8 @@ fn read_answer(mut in_queue: Queue<RequestBuffer>) -> Vec<u8> {
             //break;
         }
 
+        verify_answer_checksum(&result.data);
+
         return result.data;
     }
 }
@@ -116,8 +127,8 @@ fn check_full_answer(answer: Vec<u8>, expected: Vec<u8>) {
 fn padAndChecksum(rawCommand: &mut Vec<u8>) {
     assert!(rawCommand.len() < 16);
     rawCommand.resize(15, 0);
-    let s : u8 = rawCommand.iter().sum();
-    rawCommand.push(0x00 - s);
+    let sum:u8=rawCommand.iter().sum();
+    rawCommand.push(0x00 - sum);
     assert_eq!(rawCommand.len(), 16);
 }
 
