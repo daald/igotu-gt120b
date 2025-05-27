@@ -52,6 +52,9 @@ block_on(device.control_out(ControlOut {
     // IdentificationCommand
     cmd_Identification(&interface);
 
+    // CountCommand
+    cmd_Count(&interface);
+
 
 
 
@@ -92,7 +95,7 @@ fn verify_answer_checksum_extract_payload(answer: Vec<u8>) -> Vec<u8> {
     if actual != expected {
         panic!("Checksum error in answer. actual: {actual:02x}, expected: {expected:02x}")
     }
-    let payloadsize:u16 = (answer[1] as u16)<<8 | (answer[2] as u16);
+    let payloadsize:u16 = u16::from_be_bytes(answer[1..3].try_into().unwrap());
     if payloadsize as u32 != (answer.len()-4) as u32 {
         panic!("Invalid playload size. declared: {payloadsize:02x}, actual: {:02x}", answer.len()-4);
     }
@@ -150,10 +153,10 @@ fn cmd_NmeaSwitch(interface: &Interface, _enable: bool) {
         vec![]); //[0x93,0x00,0x00,0x6d].to_vec());
     /*
 	NmeaSwitchCommand
-	3347	55.005277	host	3.8.1	USB	64	URB_BULK in						0	
+	3347	55.005277	host	3.8.1	USB	64	URB_BULK in						0
 	3399	55.554806	host	3.8.1	USB	80	URB_BULK out	93010103000000000000000000000068	16
-	3400	55.554842	3.8.1	host	USB	64	URB_BULK out						0	
-	3401	55.555664	3.8.1	host	USB	68	URB_BULK in	9300006d				4	
+	3400	55.554842	3.8.1	host	USB	64	URB_BULK out						0
+	3401	55.555664	3.8.1	host	USB	68	URB_BULK in	9300006d				4
     */
 }
 
@@ -166,13 +169,13 @@ fn cmd_Model(interface: &Interface) -> Model {
         command); //[0x93,0x00,0x03,0xc2,0x20,0x15,0x73].to_vec());
     /*
 	ModelCommand
-	3402	55.555916	host	3.8.1	USB	64	URB_BULK in						0	
+	3402	55.555916	host	3.8.1	USB	64	URB_BULK in						0
 	3403	55.569024	host	3.8.1	USB	80	URB_BULK out	9305040003019f0000000000000000c1	16
-	3404	55.569095	3.8.1	host	USB	64	URB_BULK out						0	
-	3405	55.569261	3.8.1	host	USB	71	URB_BULK in	930003c2201573				7	
+	3404	55.569095	3.8.1	host	USB	64	URB_BULK out						0
+	3405	55.569261	3.8.1	host	USB	71	URB_BULK in	930003c2201573				7
     */
 
-    if answer[0]!=0xc2 || answer[1]!=0x20 {
+    if answer[0]!=0xc2 || answer[1]!=0x20 || answer.len()!=3 {
         panic!("Unexpected answer: {answer:02x?}");
     }
 
@@ -190,7 +193,7 @@ fn cmd_Model(interface: &Interface) -> Model {
 enum Model {
     Gt100,
     Gt200,
-    Gt120,  // also for 120b
+    Gt120,  // sadly, this is for both GT-120 and GT-120b
     Gt200e,
 }
 
@@ -199,15 +202,26 @@ fn cmd_Identification(interface: &Interface) {
     let mut command = [0x93,0x0a].to_vec();
 
     padAndChecksum(&mut command);
-    simple_cmd_eqresult(&interface,
-        command,
-        hex!("930011a623630d0102000a2b2e660d718c18000233").to_vec());
+    let answer = simple_cmd_return(&interface,
+        command);
+
+    if answer.len()!=17 {
+        panic!("Unexpected answer: {answer:02x?}");
+    }
+
+    let id = u32::from_be_bytes(answer[0..4].try_into().unwrap());  // was little endian in commands.cpp
+    let version = u16::from_be_bytes(answer[4..6].try_into().unwrap());
+    // this is far away from perfect!
+    let deviceid = u16::from_be_bytes(answer[6..8].try_into().unwrap()).to_string() ;//+ "-" + hex::encode(answer[10..16]); // todo: leading zeroes and reverse order of bytes
+
+    println!("id: {id}  version: {version}  deviceid: {deviceid}")
+
     /*
 	IdentificationCommand
-	3406	55.569581	host	3.8.1	USB	64	URB_BULK in						0	
+	3406	55.569581	host	3.8.1	USB	64	URB_BULK in						0
 	3407	55.569800	host	3.8.1	USB	80	URB_BULK out	930a0000000000000000000000000063	16
-	3408	55.569849	3.8.1	host	USB	64	URB_BULK out						0	
-	3409	55.570052	3.8.1	host	USB	85	URB_BULK in	930011a623630d0102000a2b2e660d718c18000233	21	
+	3408	55.569849	3.8.1	host	USB	64	URB_BULK out						0
+	3409	55.570052	3.8.1	host	USB	85	URB_BULK in	930011a623630d0102000a2b2e660d718c18000233	21
 
     simple_cmd(&interface,
         [0x93,0x0a,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x63].to_vec(),
@@ -216,8 +230,40 @@ fn cmd_Identification(interface: &Interface) {
     //  received [93, 00, 11, A6, 23, 63, 0D, 01, 02, 00, 0A, 4D, 2F, 66, 0D, 71, 8C, 18, 00, 02, 10]
     // expected: [93, 00, 11, A6, 23, 63, 0D, 01, 02, 00, 0A, 2B, 2E, 66, 0D, 71, 8C, 18, 00, 02, 33]
     //                                                        ^^  ^^                              ^^
+    //                        |id----------|  |ver-|          ^ firmware?   66 0D could be device name GT120B-0D66  device id 0010-00188C710D66
+    // firmware 1.2.220218 or 1.2.230111
     */
 }
+
+
+fn cmd_Count(interface: &Interface) {
+    let mut command = [0x93,0x0b,0x03,0x00,0x1d].to_vec();
+
+    padAndChecksum(&mut command);
+    let answer = simple_cmd_return(&interface,
+        command);
+
+    if answer.len()!=3 {
+        panic!("Unexpected answer: {answer:02x?}");
+    }
+
+    let count = u16::from_be_bytes(answer[1..3].try_into().unwrap());
+    println!("count: {count}")
+
+    /*
+	CountCommand
+	3410	55.570322	host	3.8.1	USB	64	URB_BULK in											0
+	3411	55.575353	host	3.8.1	USB	80	URB_BULK out	930b03001d0000000000000000000042	16
+	3412	55.575401	3.8.1	host	USB	64	URB_BULK out										0
+	3413	55.575584	3.8.1	host	USB	71	URB_BULK in		930003000b8bd4						7
+
+      r:Completion { data: [93, 00, 03, 00, 08, C0, A2], status: Ok(()) }
+    */
+}
+
+
+
+
 
 
 
