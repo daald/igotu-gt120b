@@ -43,17 +43,17 @@ block_on(device.control_out(ControlOut {
     //sync_send_control(handle, 0x21, 0x20 /* set line coding*/, 0, 0, "\x00\xc2\x01\x00\x00\x00\x08", 7, 2000 );
 
     // NmeaSwitchCommand enable=1
-    cmd_NmeaSwitch(&interface, true);
+    cmd_nmea_switch(&interface, true);
 
     // ModelCommand
-    let model = cmd_Model(&interface);
+    let model = cmd_model(&interface);
     println!("Model: {model}");
 
     // IdentificationCommand
-    cmd_Identification(&interface);
+    cmd_identification(&interface);
 
     // CountCommand
-    cmd_Count(&interface);
+    cmd_count(&interface);
 
 
 
@@ -133,21 +133,21 @@ fn check_full_answer(answer: Vec<u8>, expected: Vec<u8>) {
 
 
 
-fn padAndChecksum(rawCommand: &mut Vec<u8>) {
-    assert!(rawCommand.len() < 16);
-    rawCommand.resize(15, 0);
-    let sum:u8=rawCommand.iter().sum();
-    rawCommand.push(0x00 - sum);
-    assert_eq!(rawCommand.len(), 16);
+fn pad_and_checksum(raw_command: &mut Vec<u8>) {
+    assert!(raw_command.len() < 16);
+    raw_command.resize(15, 0);
+    let sum:u8=raw_command.iter().sum();
+    raw_command.push(0x00 - sum);
+    assert_eq!(raw_command.len(), 16);
 }
 
-fn cmd_NmeaSwitch(interface: &Interface, _enable: bool) {
+fn cmd_nmea_switch(interface: &Interface, _enable: bool) {
     let mut command = [0x93,0x01,0x01].to_vec();
 
     // ignoring this: command[3] = enable ? 0x00 : 0x03;
     command.push(0x03); // 120b needs 0x03. this was the value for disabled, but it means enabled for 120b
 
-    padAndChecksum(&mut command);
+    pad_and_checksum(&mut command);
     simple_cmd_eqresult(&interface,
         command,
         vec![]); //[0x93,0x00,0x00,0x6d].to_vec());
@@ -161,10 +161,10 @@ fn cmd_NmeaSwitch(interface: &Interface, _enable: bool) {
 }
 
 
-fn cmd_Model(interface: &Interface) -> Model {
+fn cmd_model(interface: &Interface) -> Model {
     let mut command = [0x93,0x05,0x04,0x00,0x03,0x01,0x9f].to_vec();
 
-    padAndChecksum(&mut command);
+    pad_and_checksum(&mut command);
     let answer = simple_cmd_return(&interface,
         command); //[0x93,0x00,0x03,0xc2,0x20,0x15,0x73].to_vec());
     /*
@@ -198,10 +198,10 @@ enum Model {
 }
 
 
-fn cmd_Identification(interface: &Interface) {
+fn cmd_identification(interface: &Interface) {
     let mut command = [0x93,0x0a].to_vec();
 
-    padAndChecksum(&mut command);
+    pad_and_checksum(&mut command);
     let answer = simple_cmd_return(&interface,
         command);
 
@@ -236,10 +236,10 @@ fn cmd_Identification(interface: &Interface) {
 }
 
 
-fn cmd_Count(interface: &Interface) {
+fn cmd_count(interface: &Interface) {
     let mut command = [0x93,0x0b,0x03,0x00,0x1d].to_vec();
 
-    padAndChecksum(&mut command);
+    pad_and_checksum(&mut command);
     let answer = simple_cmd_return(&interface,
         command);
 
