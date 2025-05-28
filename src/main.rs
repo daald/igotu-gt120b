@@ -1,7 +1,7 @@
 use futures_lite::future::block_on;
 use nusb::transfer::{ RequestBuffer, ControlOut, ControlType, Recipient, Queue };
-use nusb::{ Interface };
-use hex_literal::hex;
+use nusb::{ Device, Interface };
+//use hex_literal::hex;    //use: hex!
 
 
 const DEVID_VENDOR  :u16 = 0x0df7;
@@ -27,16 +27,8 @@ fn main() {
     // set control line state request - needed for the device to reply in BULK mode
     //device.control_out_blocking(handle, 0x21, 0x22 /* set line state*/, 3, 0, NULL, 0, 2000);
 
-block_on(device.control_out(ControlOut {
-    control_type: ControlType::Class,
-    recipient: Recipient::Device,
-    request: 0x22 /* set line state*/,
-    value: 0x03,
-    index: 0x00,
-    data: &[],
-})).into_result().unwrap();
+    ctrl_set_line_state(&device);
 
-    println!("sent control");
 
 
     // set line coding request - probably not needed
@@ -53,10 +45,21 @@ block_on(device.control_out(ControlOut {
     cmd_identification(&interface);
 
     // CountCommand
-    cmd_count(&interface);
+    let count = cmd_count(&interface);
+    println!("count: {count}");
 
+    let blocks = 1 + (count + 0x7f) / 0x80;
+    println!("blocks: {blocks}");
+/*
+            for (unsigned i = 0; i < blocks; ++i) {
+                emit commandRunning(i, blocks);
+                if (p->cancelRequested())
+                    throw Exception(IgotuControl::tr("Cancelled"));
+*/
+    let i=0;
+    cmd_read(&interface, i * 0x1000, 0x1000);
 
-
+    //cmd_read(&interface, 0, 0x1000);
 
 }
 
@@ -141,8 +144,42 @@ fn pad_and_checksum(raw_command: &mut Vec<u8>) {
     assert_eq!(raw_command.len(), 16);
 }
 
+
+#[derive(strum_macros::Display)]
+enum Model {
+    Gt100,
+    Gt200,
+    Gt120,  // sadly, this is for both GT-120 and GT-120b
+    Gt200e,
+}
+
+
+
+
+
+//==============================================================================
+//==============================================================================
+
+
+fn ctrl_set_line_state(device: &Device) {
+    println!("Send ctrl_set_line_state");
+    block_on(device.control_out(ControlOut {
+        control_type: ControlType::Class,
+        recipient: Recipient::Device,
+        request: 0x22 /* set line state*/,
+        value: 0x03,
+        index: 0x00,
+        data: &[],
+    })).into_result().unwrap();
+}
+
+
+//==============================================================================
+
+
 fn cmd_nmea_switch(interface: &Interface, _enable: bool) {
-    let mut command = [0x93,0x01,0x01].to_vec();
+    println!("Send cmd_nmea_switch");
+    let mut command : Vec<u8>= vec![0x93,0x01,0x01];
 
     // ignoring this: command[3] = enable ? 0x00 : 0x03;
     command.push(0x03); // 120b needs 0x03. this was the value for disabled, but it means enabled for 120b
@@ -162,7 +199,8 @@ fn cmd_nmea_switch(interface: &Interface, _enable: bool) {
 
 
 fn cmd_model(interface: &Interface) -> Model {
-    let mut command = [0x93,0x05,0x04,0x00,0x03,0x01,0x9f].to_vec();
+    println!("Send cmd_model");
+    let mut command : Vec<u8>= vec![0x93,0x05,0x04,0x00,0x03,0x01,0x9f];
 
     pad_and_checksum(&mut command);
     let answer = simple_cmd_return(&interface,
@@ -189,17 +227,10 @@ fn cmd_model(interface: &Interface) -> Model {
     }
 }
 
-#[derive(strum_macros::Display)]
-enum Model {
-    Gt100,
-    Gt200,
-    Gt120,  // sadly, this is for both GT-120 and GT-120b
-    Gt200e,
-}
-
 
 fn cmd_identification(interface: &Interface) {
-    let mut command = [0x93,0x0a].to_vec();
+    println!("Send cmd_identification");
+    let mut command : Vec<u8>= vec![0x93,0x0a];
 
     pad_and_checksum(&mut command);
     let answer = simple_cmd_return(&interface,
@@ -236,19 +267,22 @@ fn cmd_identification(interface: &Interface) {
 }
 
 
-fn cmd_count(interface: &Interface) {
-    let mut command = [0x93,0x0b,0x03,0x00,0x1d].to_vec();
+fn cmd_count(interface: &Interface) -> u16 {
+    println!("Send cmd_count");
+    let mut command : Vec<u8>= vec![0x93,0x0b,0x03,0x00,0x1d];
 
     pad_and_checksum(&mut command);
     let answer = simple_cmd_return(&interface,
         command);
 
-    if answer.len()!=3 {
+    if answer.len()!=3 || answer[0]!=0x00 {
         panic!("Unexpected answer: {answer:02x?}");
     }
 
     let count = u16::from_be_bytes(answer[1..3].try_into().unwrap());
-    println!("count: {count}")
+    println!("count: {count}");
+
+    return count;
 
     /*
 	CountCommand
@@ -261,8 +295,62 @@ fn cmd_count(interface: &Interface) {
     */
 }
 
+fn cmd_read(interface: &Interface, pos: u32, size: u16) {
+    println!("Send cmd_read");
+    let mut command : Vec<u8> = vec![0x93,0x05,0x07];//,0,0,0,0,0,0,0];
+
+    println!("size: {size:x}  pos: {pos:x}");
+
+    command.extend(&size.to_be_bytes());
+    command.push(0x04);
+    command.push(0x03);
+    command.extend(&pos.to_be_bytes()[1..4]);
+    //command[3..5]  = size.to_be_bytes();
+    //command[7..10] = pos.to_be_bytes()[1..4];
+
+    pad_and_checksum(&mut command);
+
+        panic!("stop at cmd: {command:02x?}");
 
 
+    let answer = simple_cmd_return(&interface,
+        command);
+
+    if answer.len()!=3 {
+        panic!("Unexpected answer: {answer:02x?}");
+    }
+
+
+
+    /*
+ReadCommand::ReadCommand(DataConnection *connection, unsigned pos,
+        unsigned size) :
+    IgotuCommand(connection),
+    size(size)
+{
+    QByteArray command("\x93\x05\x07\x00\x00\x04\x03\0\0\0\0\0\0\0\0", 15);
+    command[3] = (size >> 0x08) & 0xff;
+    command[4] = (size >> 0x00) & 0xff;
+    command[7] = (pos >> 0x10) & 0xff;
+    command[8] = (pos >> 0x08) & 0xff;
+    command[9] = (pos >> 0x00) & 0xff;
+    setCommand(command);
+}
+
+	ReadCommand (pos, size)
+	3414	55.576110	host	3.8.1	USB	64	URB_BULK in											0
+stop at cmd:												>>>[9305071000040300000000000000004a]
+	3415	55.578453	host	3.8.1	USB	80	URB_BULK out	930507000804031fff800000000000b4	16
+	3416	55.578483	3.8.1	host	USB	64	URB_BULK out										0
+	3417	55.578739	3.8.1	host	USB	76	URB_BULK in		930008ffffffffffffffff6d			12
+
+    */
+}
+
+
+
+//==============================================================================
+//==============================================================================
 
 
 
