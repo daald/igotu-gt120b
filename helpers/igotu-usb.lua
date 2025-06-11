@@ -11,53 +11,54 @@ function my_proto.dissector(buffer, pinfo, tree)
     local urb_transfer_type = buffer(8+1, 1):uint()
     local urb_endpoint_address = buffer(8+2, 1):uint()
     local subtree
-    if not buffer(0x40, 1):uint() == 0x93 then return end
+    local payload = buffer:range(0x40)
+    if not payload(0, 1):uint() == 0x93 then return end
     if urb_type=='S' and urb_transfer_type == 0x03 and urb_endpoint_address == 0x01 then
         --pinfo.cols.info = "CMD abc" .. urb_type .. " " .. urb_transfer_type .. " " .. urb_endpoint_address
 
 
-        --if buffer(0x40, 3) == {0x93,0x01,0x01} then
-        if buffer(0x40, 3):bytes():tohex() == "930101" then
-        --if buffer(0x40, 3):bytes() == {0x93,0x01,0x01} then
+        --if payload(0, 3) == {0x93,0x01,0x01} then
+        if payload(0, 3):bytes():tohex() == "930101" then
+        --if payload(0, 3):bytes() == {0x93,0x01,0x01} then
             pinfo.cols.info = "igotu CMD NmeaSwitchCommand(enable = ".. tostring(buffer(3,1) == 0)..")"
-        elseif buffer(0x40,2):bytes():tohex() == "930A" then
+        elseif payload(0,2):bytes():tohex() == "930A" then
             --r = unpack_from('<IBB4s', response)
             pinfo.cols.info = "igotu CMD IdentificationCommand()"
             --print('  serialNumber() -> %d' % (r[0]))
             --print('  firmwareVersion() -> %u.%02u' % (r[1], r[2]))
-        elseif buffer(0x40,3):bytes():tohex() == "930B03" and buffer(0x40+4,1):int() == 0x1d then
+        elseif payload(0,3):bytes():tohex() == "930B03" and payload(4,1):int() == 0x1d then
             --    r = unpack_from('>xH', response)
             pinfo.cols.info = "igotu CMD CountCommand()"
             --    print('  trackPointCount() -> %d' % (r[0]))
-        elseif buffer(0x40,7):bytes():tohex() == "9305040003019F" then
+        elseif payload(0,7):bytes():tohex() == "9305040003019F" then
             --    r = unpack_from('>BH', response)
             pinfo.cols.info = "igotu CMD ModelCommand()"
             --    print('  modelName() -> 0x%06x' % (r[0] * 0x10000 + r[1]))
-        elseif buffer(0x40,3):bytes():tohex() == "930507" and buffer(0x40+5,2):bytes():tohex() == "0403" then
+        elseif payload(0,3):bytes():tohex() == "930507" and payload(5,2):bytes():tohex() == "0403" then
             --    r = unpack_from('>xxxHxxBH', query)
             pinfo.cols.info = "igotu CMD ReadCommand" --(pos = 0x%06x, size = 0x%04x)' % (r[1] * 0x10000 +                        r[2], r[0]))
-        elseif buffer(0x40,3):bytes():tohex() == "930607" and buffer(0x40+5,1):int() == 0x04 then
+        elseif payload(0,3):bytes():tohex() == "930607" and payload(5,1):int() == 0x04 then
             --    r = unpack_from('>xxxHxBBH', query)
             pinfo.cols.info = "igotu CMD WriteCommand"--(mode = 0x%02x, pos = 0x%06x, size = 0x%04x)' % (r[1],                        r[2] * 0x1000 + r[3], r[0]))                rawdatapackages = (r[0] + 6) / 7
-        elseif buffer(0x40,3):bytes():tohex() == "930903" then
+        elseif payload(0,3):bytes():tohex() == "930903" then
             --    r = unpack_from('>xxxBBB', query)
             pinfo.cols.info = "igotu CMD TimeCommand"--(time = time(%02u, %02u, %02u)' % (r[0], r[1],                        r[2]))
-        elseif buffer(0x40,3):bytes():tohex() == "930C00" then
+        elseif payload(0,3):bytes():tohex() == "930C00" then
             --    r = unpack_from('>xxxB', query)
             pinfo.cols.info = "igotu CMD UnknownPurgeCommand1"--(mode = 0x%02x)' % (r[0]))
-        elseif buffer(0x40,3):bytes():tohex() == "930802" then
+        elseif payload(0,3):bytes():tohex() == "930802" then
             pinfo.cols.info = "igotu CMD UnknownPurgeCommand2()"
-        elseif buffer(0x40,4):bytes():tohex() == "93060400" and buffer(0x40+5,2):bytes():tohex() == "0106" then
+        elseif payload(0,4):bytes():tohex() == "93060400" and payload(5,2):bytes():tohex() == "0106" then
             --    r = unpack_from('>xxxxB', query)
             pinfo.cols.info = "igotu CMD UnknownWriteCommand1"--(mode = 0x%02x)' % (r[0]))
-        elseif buffer(0x40,3):bytes():tohex() == "930504" and buffer(0x40+5,2):bytes():tohex() == "0105" then
+        elseif payload(0,3):bytes():tohex() == "930504" and payload(5,2):bytes():tohex() == "0105" then
             --    r = unpack_from('>xxxH', query)
             pinfo.cols.info = "igotu CMD UnknownWriteCommand2"--(size = 0x%04x)' % (r[0]))
-        elseif buffer(0x40,3):bytes():tohex() == "930D07" then
+        elseif payload(0,3):bytes():tohex() == "930D07" then
             pinfo.cols.info = "igotu CMD UnknownWriteCommand3()"
-        elseif buffer(0x40,2):bytes():tohex() == "9309" then
+        elseif payload(0,2):bytes():tohex() == "9309" then
             pinfo.cols.info = "igotu CMD (unverified) UnknownTimeCommand()"  -- takes [s] and [ms] epoch timestamp at the same time
-        elseif buffer(0x40,3):bytes():tohex() == "931102" then --unverified
+        elseif payload(0,3):bytes():tohex() == "931102" then --unverified
             pinfo.cols.info = "igotu CMD (unverified) device reboot"  -- takes [s] and [ms] epoch timestamp at the same time
         else
             pinfo.cols.info = "igotu CMD   (unknown)"
@@ -69,13 +70,13 @@ function my_proto.dissector(buffer, pinfo, tree)
         pinfo.cols.info = "ANSW abc" .. urb_type .. " " .. urb_transfer_type .. " " .. urb_endpoint_address
         -- Create a display tree
         subtree = tree:add(my_proto, buffer(), "i-gotU Answer Data")
-        local payloadlen = buffer(0x41,2):uint()
-        subtree:add(data_length, buffer(0x41,2))
-        subtree:add(data, buffer(0x43,payloadlen))
-        subtree:add(checksum, buffer(0x43+payloadlen,1))
-        subtree:add(buffer(0x41,2), "payload len: " .. buffer(0x41,2):uint())
-        subtree:add(buffer(0x43,payloadlen), "payload: " .. buffer(0x43,payloadlen))
-        subtree:add(buffer(0x43+payloadlen,1), "checksum: " .. buffer(0x43+payloadlen,1))
+        local payloadlen = payload(1,2):uint()
+        subtree:add(data_length, payload(1,2))
+        subtree:add(data, payload(3,payloadlen))  -- don't use payloadlen for ReadCommand answer
+        subtree:add(checksum, payload(3+payloadlen,1))
+        subtree:add(payload(1,2), "payload len: " .. payload(1,2):uint())
+        subtree:add(payload(3,payloadlen), "payload: " .. payload(3,payloadlen))
+        subtree:add(payload(3+payloadlen,1), "checksum: " .. payload(3+payloadlen,1))
     else
         return
     end
