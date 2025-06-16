@@ -3,49 +3,37 @@ use nusb::transfer::{ RequestBuffer, ControlOut, ControlType, Recipient, Queue }
 use nusb::{ Device, Interface };
 //use hex_literal::hex;    //use: hex!
 
+mod comm;
+mod comm_bulk;
+use crate::comm_bulk::CommBulk;
 
-const DEVID_VENDOR  :u16 = 0x0df7;
-const DEVID_PRODUCT :u16 = 0x0920;
-const DEVICE_INTERFACE :u8 = 1;
-const BULK_EP_IN  :u8 = 0x81;
-const BULK_EP_OUT :u8 = 0x01;
+
 
 fn main() {
     println!("Hello, world!");
 
     env_logger::init();
-    let di = nusb::list_devices()
-        .unwrap()
-        .find(|d| d.vendor_id() == DEVID_VENDOR && d.product_id() == DEVID_PRODUCT)
-        .expect("Cannot find device");
 
-    println!("Device info: {di:?}");
-
-    let device = di.open().unwrap();
-    let interface = device.detach_and_claim_interface(DEVICE_INTERFACE).unwrap();
-
-    // set control line state request - needed for the device to reply in BULK mode
-    //device.control_out_blocking(handle, 0x21, 0x22 /* set line state*/, 3, 0, NULL, 0, 2000);
-
-    ctrl_set_line_state(&device);
-
+    let mut comm = comm_bulk::init_comm_bulk();
+    //let comm = CommBulk {};
+    //comm.init();
 
 
     // set line coding request - probably not needed
     //sync_send_control(handle, 0x21, 0x20 /* set line coding*/, 0, 0, "\x00\xc2\x01\x00\x00\x00\x08", 7, 2000 );
 
     // NmeaSwitchCommand enable=1
-    cmd_nmea_switch(&interface, true);
+    cmd_nmea_switch(&mut comm, true);
 
     // ModelCommand
-    let model = cmd_model(&interface);
+    let model = cmd_model(&mut comm);
     println!("Model: {model}");
 
     // IdentificationCommand
-    cmd_identification(&interface);
+    cmd_identification(&mut comm);
 
     // CountCommand
-    let count = cmd_count(&interface);
+    let count = cmd_count(&mut comm);
     println!("count: {count}");
 
 // ./decode-igotu-trace3+120b.py says ReadCommand(pos = 0x1fff80, size = 0x0008) but this is not calculatable with cpp code. I guess another impl from manufacturer
@@ -56,7 +44,7 @@ fn main() {
 // 3417	55.578739	3.8.1	host	USB	76	URB_BULK in		930008ffffffffffffffff6d	12	
 
 
-    let payload = cmd_read(&interface, 0x1fff80, 0x0008);  // from data dump of original software. no clue what is expected here // TODO force all FFs?
+    let payload = cmd_read(&mut comm, 0x1fff80, 0x0008);  // from data dump of original software. no clue what is expected here // TODO force all FFs?
 
     if payload.len()==8 && payload==vec![0xff; 8] {
         // TODO set something. it's the time in epoc in both [s] and [ms], but for what reason?  --   usb.capdata[0] == 0x93 and usb.capdata[1] == 0x09
@@ -79,7 +67,7 @@ panic!("safety stop");
                     throw Exception(IgotuControl::tr("Cancelled"));
 */
     let i=0;
-    cmd_read(&interface, i * 0x1000, 0x1000);
+    cmd_read(&mut comm, i * 0x1000, 0x1000);
 
     //cmd_read(&interface, 0, 0x1000);
 
@@ -110,61 +98,9 @@ panic!("safety stop");
 
 
 
-fn verify_answer_checksum_extract_payload(answer: Vec<u8>) -> Vec<u8> {
-    if answer[0] != 0x93 {
-        panic!("Invalid prefix in answer. expected: 0x93");
-    }
-    let sum:u8 = answer[..answer.len()-1].iter().sum();
-    let expected:u8 = 0x00 - sum;
-    let actual = answer[answer.len()-1];
-    if actual != expected {
-        panic!("Checksum error in answer. actual: {actual:02x}, expected: {expected:02x}")
-    }
-    let payloadsize:u16 = u16::from_be_bytes(answer[1..3].try_into().unwrap());
-    if payloadsize as u32 != (answer.len()-4) as u32 {
-        panic!("Invalid playload size. declared: {payloadsize:02x}, actual: {:02x}", answer.len()-4);
-    }
-    return answer[3..(answer.len()-1)].to_vec();
-}
-
-
-fn read_answer(mut in_queue: Queue<RequestBuffer>) -> Vec<u8> {
-    loop {
-        while in_queue.pending() < 8 {
-            in_queue.submit(RequestBuffer::new(256));
-        }
-        let result = block_on(in_queue.next_complete());
-        println!("  r:{result:02X?}");
-// r:Completion { data: [147, 0, 0, 109], status: Ok(()) }
-//    if (memcmp(combuf_in, "\x93\x00\x00\x6d", 4) == 0) {
-//        printf("received success\n");
-
-
-        if result.status.is_err() {
-            panic!("error result");
-            //break;
-        }
-
-        return verify_answer_checksum_extract_payload(result.data);
-    }
-}
-
-fn check_full_answer(answer: Vec<u8>, expected: Vec<u8>) {
-    if answer != expected {
-        panic!("Wrong answer. received {answer:02X?}. expected: {expected:02X?}");
-    }
-    println!("all good")
-}
 
 
 
-fn pad_and_checksum(raw_command: &mut Vec<u8>) {
-    assert!(raw_command.len() < 16);
-    raw_command.resize(15, 0);
-    let sum:u8=raw_command.iter().sum();
-    raw_command.push(0x00 - sum);
-    assert_eq!(raw_command.len(), 16);
-}
 
 
 #[derive(strum_macros::Display)]
@@ -183,31 +119,21 @@ enum Model {
 //==============================================================================
 
 
-fn ctrl_set_line_state(device: &Device) {
-    println!("Send ctrl_set_line_state");
-    block_on(device.control_out(ControlOut {
-        control_type: ControlType::Class,
-        recipient: Recipient::Device,
-        request: 0x22 /* set line state*/,
-        value: 0x03,
-        index: 0x00,
-        data: &[],
-    })).into_result().unwrap();
-}
+
 
 
 //==============================================================================
 
 
-fn cmd_nmea_switch(interface: &Interface, _enable: bool) {
+fn cmd_nmea_switch(comm: &mut CommBulk, _enable: bool) {
     println!("Send cmd_nmea_switch");
     let mut command : Vec<u8>= vec![0x93,0x01,0x01];
 
     // ignoring this: command[3] = enable ? 0x00 : 0x03;
     command.push(0x03); // 120b needs 0x03. this was the value for disabled, but it means enabled for 120b
 
-    pad_and_checksum(&mut command);
-    simple_cmd_eqresult(&interface,
+
+    comm.simple_cmd_eqresult(
         command,
         vec![]); //[0x93,0x00,0x00,0x6d].to_vec());
     /*
@@ -220,12 +146,12 @@ fn cmd_nmea_switch(interface: &Interface, _enable: bool) {
 }
 
 
-fn cmd_model(interface: &Interface) -> Model {
+fn cmd_model(comm: &mut CommBulk) -> Model {
     println!("Send cmd_model");
     let mut command : Vec<u8>= vec![0x93,0x05,0x04,0x00,0x03,0x01,0x9f];
 
-    pad_and_checksum(&mut command);
-    let answer = simple_cmd_return(&interface,
+
+    let answer = comm.simple_cmd_return(
         command); //[0x93,0x00,0x03,0xc2,0x20,0x15,0x73].to_vec());
     /*
 	ModelCommand
@@ -250,12 +176,12 @@ fn cmd_model(interface: &Interface) -> Model {
 }
 
 
-fn cmd_identification(interface: &Interface) {
+fn cmd_identification(comm: &mut CommBulk) {
     println!("Send cmd_identification");
     let mut command : Vec<u8>= vec![0x93,0x0a];
 
-    pad_and_checksum(&mut command);
-    let answer = simple_cmd_return(&interface,
+
+    let answer = comm.simple_cmd_return(
         command);
 
     if answer.len()!=17 {
@@ -289,12 +215,12 @@ fn cmd_identification(interface: &Interface) {
 }
 
 
-fn cmd_count(interface: &Interface) -> u16 {
+fn cmd_count(comm: &mut CommBulk) -> u16 {
     println!("Send cmd_count");
     let mut command : Vec<u8>= vec![0x93,0x0b,0x03,0x00,0x1d];
 
-    pad_and_checksum(&mut command);
-    let answer = simple_cmd_return(&interface,
+
+    let answer = comm.simple_cmd_return(
         command);
 
     if answer.len()!=3 || answer[0]!=0x00 {
@@ -317,7 +243,7 @@ fn cmd_count(interface: &Interface) -> u16 {
     */
 }
 
-fn cmd_read(interface: &Interface, pos: u32, size: u16) -> Vec<u8> {
+fn cmd_read(comm: &mut CommBulk, pos: u32, size: u16) -> Vec<u8> {
     println!("Send cmd_read");
     let mut command : Vec<u8> = vec![0x93,0x05,0x07];//,0,0,0,0,0,0,0];
 
@@ -330,9 +256,9 @@ fn cmd_read(interface: &Interface, pos: u32, size: u16) -> Vec<u8> {
     //command[3..5]  = size.to_be_bytes();
     //command[7..10] = pos.to_be_bytes()[1..4];
 
-    pad_and_checksum(&mut command);
 
-    let answer = simple_cmd_return(&interface,
+
+    let answer = comm.simple_cmd_return(
         command);
 
     if answer.len()!=size as usize  {
@@ -375,23 +301,4 @@ stop at cmd:												>>>[9305071000040300000000000000004a]
 
 
 
-fn simple_cmd_eqresult(interface: &Interface, to_device: Vec<u8>, expect_from_device: Vec<u8>) {
-    let answer = simple_cmd_return(&interface, to_device);
-    //println!("  r={answer:02X?}");
-    check_full_answer(answer, expect_from_device);
-}
 
-fn simple_cmd_return(interface: &Interface, to_device: Vec<u8>) -> Vec<u8> {
-    println!("Simple cmd {to_device:02X?}");
-
-    let queue = interface.bulk_in_queue(BULK_EP_IN);
-
-    block_on(interface.bulk_out(BULK_EP_OUT, to_device))
-        .into_result()
-        .unwrap();
-
-    println!("  awaiting answer");
-    let answer = read_answer(queue);
-    //println!("  r={answer:02X?}");
-    return answer;
-}
