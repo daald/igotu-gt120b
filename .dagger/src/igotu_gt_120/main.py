@@ -31,16 +31,15 @@ class IgotuGt120:
         source: Annotated[
             dagger.Directory, DefaultPath("/"), Doc("hello-dagger source directory")
         ],
-    ) -> str:
+    ) -> dagger.Container:
         """Build the application container"""
         return await (
             self.build_env(source)
             .with_mounted_directory("/src", source)
-            .with_exec(["cargo", "build"#, "--path", "bulk-test2"
-              ])
-            .with_exec(["sh", "-cx", "ls;pwd; ls src"])
-            #.directory("./dist")
-            .stdout()
+            .with_exec(["cargo", "install", "--path", "."])
+            .directory("target")
+            # use: dagger -c 'build | export target'
+            # see: https://docs.dagger.io/cookbook#builds
         )
 
     @function
@@ -57,7 +56,7 @@ class IgotuGt120:
             .from_("rust")
             .with_workdir("/src")
             .with_file("Cargo.toml", source.file("Cargo.toml"))
-            .with_exec(["sh", "-ce", """
+            .with_exec(["sh", "-exc", """
             mkdir -p src/bin/
             echo 'fn main() {}' >src/bin/__empty.rs
             echo >>Cargo.toml
