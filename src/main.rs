@@ -7,6 +7,7 @@
 mod comm_bulk;
 use crate::comm_bulk::CommBulk;
 mod intf_bulk;
+mod intf_file;
 //use crate::intf_bulk::IntfBulk;
 
 
@@ -16,7 +17,8 @@ fn main() {
 
     env_logger::init();
 
-    let mut comm = CommBulk{intf: intf_bulk::init_intf_bulk()};
+    let mut comm = CommBulk{intf: intf_file::init_intf_file()};
+    //let mut comm = CommBulk{intf: intf_bulk::init_intf_bulk()};
     //let comm = CommBulk {};
     //comm.init();
 

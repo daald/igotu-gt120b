@@ -3,6 +3,10 @@ use nusb::transfer::{ RequestBuffer, ControlOut, ControlType, Recipient, Queue }
 use nusb::{ Device, Interface };
 //use hex_literal::hex;    //use: hex!
 
+#[path = "intf.rs"]
+mod intf;
+pub use intf::Intf;
+
 
 
 
@@ -38,8 +42,8 @@ pub fn init_intf_bulk() -> IntfBulk {
     return intf;
 }
 
-impl IntfBulk {
-  pub fn send_and_receive(&mut self, to_device: Vec<u8>) -> Vec<u8> {
+impl Intf for IntfBulk {
+  fn send_and_receive(&mut self, to_device: Vec<u8>) -> Vec<u8> {
     let queue = self.interface.bulk_in_queue(BULK_EP_IN);
 
     block_on(self.interface.bulk_out(BULK_EP_OUT, to_device))
@@ -51,9 +55,9 @@ impl IntfBulk {
     // TODO close queue
     return answer;
   }
+}
 
-
-
+impl IntfBulk {
 
   fn read_answer(&mut self, mut in_queue: Queue<RequestBuffer>) -> Vec<u8> {
     loop {
