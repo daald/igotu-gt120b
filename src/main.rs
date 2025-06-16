@@ -173,7 +173,7 @@ fn cmd_model(comm: &mut CommBulk) -> Model {
     match model{
         0x13 => return Model::Gt100,
         0x14 => return Model::Gt200,
-        0x15 => return Model::Gt120,
+        0x15 => return Model::Gt120,  // a and b version!
         0x17 => return Model::Gt200e,
         _ => panic!("Unknown model: {:02x}", answer[2]),
     }
