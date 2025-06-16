@@ -48,6 +48,28 @@ fn main() {
     let count = cmd_count(&interface);
     println!("count: {count}");
 
+// ./decode-igotu-trace3+120b.py says ReadCommand(pos = 0x1fff80, size = 0x0008) but this is not calculatable with cpp code. I guess another impl from manufacturer
+// 3411	55.575353	host	3.8.1	USB	80	URB_BULK out	930b03001d0000000000000000000042	16		CountCommand
+// 3413	55.575584	3.8.1	host	USB	71	URB_BULK in		930003000b8bd4	7	
+//
+// 3415	55.578453	host	3.8.1	USB	80	URB_BULK out	930507000804031fff800000000000b4	16		ReadCommand (pos, size)
+// 3417	55.578739	3.8.1	host	USB	76	URB_BULK in		930008ffffffffffffffff6d	12	
+
+
+    let payload = cmd_read(&interface, 0x1fff80, 0x0008);  // from data dump of original software. no clue what is expected here // TODO force all FFs?
+
+    if payload.len()==8 && payload==vec![0xff; 8] {
+        // TODO set something. it's the time in epoc in both [s] and [ms], but for what reason?  --   usb.capdata[0] == 0x93 and usb.capdata[1] == 0x09
+    } else {
+        // assumption: 8xff is some signal to send this setsomething command
+        panic!("Unknown device state. needs more debugging");
+    }
+
+
+panic!("safety stop");
+
+
+
     let blocks = 1 + (count + 0x7f) / 0x80;
     println!("blocks: {blocks}");
 /*
@@ -295,7 +317,7 @@ fn cmd_count(interface: &Interface) -> u16 {
     */
 }
 
-fn cmd_read(interface: &Interface, pos: u32, size: u16) {
+fn cmd_read(interface: &Interface, pos: u32, size: u16) -> Vec<u8> {
     println!("Send cmd_read");
     let mut command : Vec<u8> = vec![0x93,0x05,0x07];//,0,0,0,0,0,0,0];
 
@@ -310,15 +332,13 @@ fn cmd_read(interface: &Interface, pos: u32, size: u16) {
 
     pad_and_checksum(&mut command);
 
-        panic!("stop at cmd: {command:02x?}");
-
-
     let answer = simple_cmd_return(&interface,
         command);
 
-    if answer.len()!=3 {
+    if answer.len()!=size as usize  {
         panic!("Unexpected answer: {answer:02x?}");
     }
+    return answer;
 
 
 
@@ -356,16 +376,7 @@ stop at cmd:												>>>[9305071000040300000000000000004a]
 
 
 fn simple_cmd_eqresult(interface: &Interface, to_device: Vec<u8>, expect_from_device: Vec<u8>) {
-    println!("Simple cmd {to_device:02X?}");
-
-    let queue = interface.bulk_in_queue(BULK_EP_IN);
-
-    block_on(interface.bulk_out(BULK_EP_OUT, to_device))
-        .into_result()
-        .unwrap();
-
-    println!("  awaiting answer");
-    let answer = read_answer(queue);
+    let answer = simple_cmd_return(&interface, to_device);
     //println!("  r={answer:02X?}");
     check_full_answer(answer, expect_from_device);
 }
