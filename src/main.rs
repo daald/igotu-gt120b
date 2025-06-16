@@ -1,6 +1,6 @@
-use futures_lite::future::block_on;
-use nusb::transfer::{ RequestBuffer, ControlOut, ControlType, Recipient, Queue };
-use nusb::{ Device, Interface };
+//use futures_lite::future::block_on;
+//use nusb::transfer::{ RequestBuffer, ControlOut, ControlType, Recipient, Queue };
+//use nusb::{ Device, Interface };
 //use hex_literal::hex;    //use: hex!
 
 mod comm;
@@ -148,7 +148,7 @@ fn cmd_nmea_switch(comm: &mut CommBulk, _enable: bool) {
 
 fn cmd_model(comm: &mut CommBulk) -> Model {
     println!("Send cmd_model");
-    let mut command : Vec<u8>= vec![0x93,0x05,0x04,0x00,0x03,0x01,0x9f];
+    let command : Vec<u8>= vec![0x93,0x05,0x04,0x00,0x03,0x01,0x9f];
 
 
     let answer = comm.simple_cmd_return(
@@ -178,7 +178,7 @@ fn cmd_model(comm: &mut CommBulk) -> Model {
 
 fn cmd_identification(comm: &mut CommBulk) {
     println!("Send cmd_identification");
-    let mut command : Vec<u8>= vec![0x93,0x0a];
+    let command : Vec<u8>= vec![0x93,0x0a];
 
 
     let answer = comm.simple_cmd_return(
@@ -217,7 +217,7 @@ fn cmd_identification(comm: &mut CommBulk) {
 
 fn cmd_count(comm: &mut CommBulk) -> u16 {
     println!("Send cmd_count");
-    let mut command : Vec<u8>= vec![0x93,0x0b,0x03,0x00,0x1d];
+    let command : Vec<u8>= vec![0x93,0x0b,0x03,0x00,0x1d];
 
 
     let answer = comm.simple_cmd_return(

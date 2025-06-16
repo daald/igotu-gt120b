@@ -15,7 +15,7 @@ pub struct CommBulk {
   interface: Interface,
 }
 
-  
+
 pub fn init_comm_bulk() -> CommBulk {
     let di = nusb::list_devices()
         .unwrap()
@@ -31,12 +31,12 @@ pub fn init_comm_bulk() -> CommBulk {
     //device.control_out_blocking(handle, 0x21, 0x22 /* set line state*/, 3, 0, NULL, 0, 2000);
 
     ctrl_set_line_state(&device);
-    
+
     return CommBulk{device: device, interface: interface};
 }
 
 impl CommBulk {
-  
+
   pub fn simple_cmd_return(&mut self, to_device_: Vec<u8>) -> Vec<u8> {
     let mut to_device = to_device_.clone();
     pad_and_checksum(&mut to_device);
@@ -54,17 +54,17 @@ impl CommBulk {
     //println!("  r={answer:02X?}");
     return answer;
   }
-  
+
   pub fn simple_cmd_eqresult(&mut self, to_device: Vec<u8>, expect_from_device: Vec<u8>) {
     let answer = self.simple_cmd_return(to_device);
     //println!("  r={answer:02X?}");
     check_full_answer(answer, expect_from_device);
   }
 
-  
 
-  
-  
+
+
+
   fn read_answer(&mut self, mut in_queue: Queue<RequestBuffer>) -> Vec<u8> {
     loop {
         while in_queue.pending() < 8 {
@@ -86,7 +86,7 @@ impl CommBulk {
     }
   }
 }
-  
+
 fn ctrl_set_line_state(device: &Device) {
     println!("Send ctrl_set_line_state");
     block_on(device.control_out(ControlOut {
@@ -107,8 +107,8 @@ fn pad_and_checksum(raw_command: &mut Vec<u8>) {
     raw_command.push(0x00 - sum);
     assert_eq!(raw_command.len(), 16);
 }
-  
-  
+
+
 
 fn verify_answer_checksum_extract_payload(answer: Vec<u8>) -> Vec<u8> {
     if answer[0] != 0x93 {
