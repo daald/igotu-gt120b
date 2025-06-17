@@ -5,12 +5,12 @@
 
 
 //mod intf_bulk;
-use crate::intf_bulk::Intf;
+use crate::intf::Intf;
 
 
 
 pub struct CommBulk {
-  pub intf: Intf,
+  pub intf: dyn Intf,
 }
 
 

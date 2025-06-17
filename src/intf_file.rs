@@ -5,7 +5,7 @@ use hex;
 
 
 #[path = "intf.rs"]
-mod intf;
+pub mod intf;
 pub use intf::Intf;
 
 
@@ -16,7 +16,7 @@ pub struct IntfFile {
 
 struct InOut {
   out: bool,
-  line: String,
+  line: Vec<u8>,
 }
 
 pub fn init_intf_file() -> IntfFile {
@@ -25,9 +25,9 @@ pub fn init_intf_file() -> IntfFile {
 
     for line in read_to_string("src/replay-120b.txt").unwrap().lines() {
         if line.starts_with("> "){
-            result.push(InOut{out: true, line: hex::decode(line.to_string()[2..]).expect("Decoding failed")});
+            result.push(InOut{out: true, line: hex::decode(line.to_string()[2..].replace(":", "")).expect("Decoding failed")});
         } else if line.starts_with("< "){
-            result.push(InOut{out: false, line: hex::decode(line.to_string()[2..]).expect("Decoding failed")});
+            result.push(InOut{out: false, line: hex::decode(line.to_string()[2..].replace(":", "")).expect("Decoding failed")});
         } else {
             println!("Unknown line {line}");
         }
@@ -45,7 +45,7 @@ impl Intf for IntfFile {
     if outLine.line == to_device {
       let li = self.nextLine;
       let li2 = outLine.line;
-      panic!("Next output doesn't match: #{li}\nactual: {li2}\nexpected: {to_device}")
+      panic!("Next output doesn't match: #{li}\nactual: {li2:02X?}\nexpected: {to_device:02X?}")
     }
     
     self.nextLine += 1;

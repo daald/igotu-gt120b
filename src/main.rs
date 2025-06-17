@@ -8,6 +8,7 @@ mod comm_bulk;
 use crate::comm_bulk::CommBulk;
 mod intf_bulk;
 mod intf_file;
+mod intf;
 //use crate::intf_bulk::IntfBulk;
 
 
