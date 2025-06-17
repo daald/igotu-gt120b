@@ -36,7 +36,8 @@ class IgotuGt120:
         return await (
             self.build_env(source)
             .with_mounted_directory("/src", source)
-            .with_exec(["cargo", "install", "--path", "."])
+            #.with_exec(["cargo", "install", "--path", "."])
+            .with_exec(["cargo", "build"])
             .directory("target")
             # use: dagger -c 'build | export target'
             # see: https://docs.dagger.io/cookbook#builds
