@@ -32,8 +32,9 @@ impl CommBulk {
     check_full_answer(answer, expect_from_device);
   }
 
-
-
+  pub fn is_real(&self) -> bool {
+    return self.intf.is_real();
+  }
 
 }
 

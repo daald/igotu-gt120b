@@ -1,3 +1,4 @@
+use std::env;
 //use futures_lite::future::block_on;
 //use nusb::transfer::{ RequestBuffer, ControlOut, ControlType, Recipient, Queue };
 //use nusb::{ Device, Interface };
@@ -9,6 +10,8 @@ use crate::comm_bulk::CommBulk;
 mod intf_bulk;
 mod intf_file;
 mod intf;
+use crate::intf::Intf;
+
 //use crate::intf_bulk::IntfBulk;
 
 
@@ -18,8 +21,19 @@ fn main() {
 
     env_logger::init();
 
-    let intf = intf_file::init_intf_file();
-    let mut comm = CommBulk{intf: Box::new(intf)};
+    let args: Vec<String> = env::args().collect();
+    dbg!(&args);
+    let mut simulation = true;
+    if args.len()>1 && args[1]=="--real"{
+        simulation = false;
+    }
+
+    let intf:Box<dyn Intf> = if simulation {
+        Box::new(intf_file::init_intf_file())
+    } else {
+        Box::new(intf_bulk::init_intf_bulk())
+    };
+    let mut comm = CommBulk{intf: intf};
     //let comm = CommBulk {};
     //comm.init();
 
@@ -59,7 +73,9 @@ fn main() {
     }
 
 
-panic!("safety stop");
+    if comm.is_real() {
+        panic!("safety stop");
+    }
 
 
 

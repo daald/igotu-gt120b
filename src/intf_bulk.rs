@@ -3,8 +3,7 @@ use nusb::transfer::{ RequestBuffer, ControlOut, ControlType, Recipient, Queue }
 use nusb::{ Device, Interface };
 //use hex_literal::hex;    //use: hex!
 
-#[path = "intf.rs"]
-mod intf;
+use crate::intf;
 pub use intf::Intf;
 
 
@@ -54,6 +53,10 @@ impl Intf for IntfBulk {
     let answer = self.read_answer(queue);
     // TODO close queue
     return answer;
+  }
+
+  fn is_real(&self) -> bool {
+    return true;
   }
 }
 

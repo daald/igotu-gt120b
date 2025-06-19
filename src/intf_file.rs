@@ -19,6 +19,7 @@ struct InOut {
 }
 
 pub fn init_intf_file() -> IntfFile {
+    println!("\n\nRUNNING SIMULATOR\n\n");
 
     let mut result = Vec::new();
 
@@ -51,6 +52,10 @@ impl Intf for IntfFile {
     }
     self.nextLine += 1;
     return inLine.line.clone();
+  }
+
+  fn is_real(&self) -> bool {
+    return false;
   }
 }
 
