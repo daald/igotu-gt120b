@@ -10,7 +10,7 @@ use crate::intf::Intf;
 
 
 pub struct CommBulk {
-  pub intf: dyn Intf,
+  pub intf: Box<dyn Intf>,
 }
 
 
@@ -42,8 +42,8 @@ impl CommBulk {
 fn pad_and_checksum(raw_command: &mut Vec<u8>) {
     assert!(raw_command.len() < 16);
     raw_command.resize(15, 0);
-    let sum:u8=raw_command.iter().sum();
-    raw_command.push(0x00 - sum);
+    let sum:u8=raw_command.iter().fold(0, |sum, i| sum.wrapping_add(*i));
+    raw_command.push(0x00u8.wrapping_sub(sum));
     assert_eq!(raw_command.len(), 16);
 }
 
@@ -53,8 +53,8 @@ fn verify_answer_checksum_extract_payload(answer: Vec<u8>) -> Vec<u8> {
     if answer[0] != 0x93 {
         panic!("Invalid prefix in answer. expected: 0x93");
     }
-    let sum:u8 = answer[..answer.len()-1].iter().sum();
-    let expected:u8 = 0x00 - sum;
+    let sum:u8 = answer[..answer.len()-1].iter().fold(0, |sum, i| sum.wrapping_add(*i));
+    let expected:u8 = 0x00u8.wrapping_sub(sum);
     let actual = answer[answer.len()-1];
     if actual != expected {
         panic!("Checksum error in answer. actual: {actual:02x}, expected: {expected:02x}")

@@ -18,8 +18,8 @@ fn main() {
 
     env_logger::init();
 
-    let mut comm = CommBulk{intf: intf_file::init_intf_file()};
-    //let mut comm = CommBulk{intf: intf_bulk::init_intf_bulk()};
+    let intf = intf_file::init_intf_file();
+    let mut comm = CommBulk{intf: Box::new(intf)};
     //let comm = CommBulk {};
     //comm.init();
 

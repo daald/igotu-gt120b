@@ -4,4 +4,4 @@ set -ex
 
 dagger -c 'build | export target'
 
-./target/release/bulk-test2
+RUST_BACKTRACE=1 ./target/debug/bulk-test2

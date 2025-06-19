@@ -4,8 +4,7 @@ use std::fs::read_to_string;
 use hex;
 
 
-#[path = "intf.rs"]
-pub mod intf;
+use crate::intf;
 pub use intf::Intf;
 
 
@@ -37,25 +36,21 @@ pub fn init_intf_file() -> IntfFile {
 
 impl Intf for IntfFile {
   fn send_and_receive(&mut self, to_device: Vec<u8>) -> Vec<u8> {
-    let outLine = self.lines[self.nextLine];
+    let outLine = &self.lines[self.nextLine];
     if !outLine.out {
-      let li = self.nextLine;
-      panic!("No out-line: #{li}")
+      panic!("No out-line: #{}", self.nextLine);
     }
-    if outLine.line == to_device {
-      let li = self.nextLine;
-      let li2 = outLine.line;
-      panic!("Next output doesn't match: #{li}\nactual: {li2:02X?}\nexpected: {to_device:02X?}")
+    if outLine.line != to_device {
+      panic!("Next output doesn't match: #{}\nactual: {:02X?}\nexpected: {:02X?}", self.nextLine, outLine.line, to_device);
     }
     
     self.nextLine += 1;
-    let inLine = self.lines[self.nextLine];
+    let inLine = &self.lines[self.nextLine];
     if inLine.out {
-      let li = self.nextLine;
-      panic!("No in-line: #{li}")
+      panic!("No in-line: #{}", self.nextLine);
     }
     self.nextLine += 1;
-    return inLine.line;
+    return inLine.line.clone();
   }
 }
 
