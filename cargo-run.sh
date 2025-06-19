@@ -8,4 +8,4 @@ set -ex
 #cargo install --path .
 cargo build
 
-./target/debug/bulk-test2
+RUST_BACKTRACE=1 ./target/debug/igotu-gt120
