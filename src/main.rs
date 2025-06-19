@@ -67,6 +67,9 @@ fn main() {
 
     if payload.len()==8 && payload==vec![0xff; 8] {
         // TODO set something. it's the time in epoc in both [s] and [ms], but for what reason?  --   usb.capdata[0] == 0x93 and usb.capdata[1] == 0x09
+
+        //> 93:09:20:cd:d6:3d:9e:36:06:00:da:24:3e:68:00:e6  or 93:09:b0:cd:7f:a0:39360600d28c37680056
+        //< 93:00:00:6d
     } else {
         // assumption: 8xff is some signal to send this setsomething command
         panic!("Unknown device state. needs more debugging");
@@ -90,7 +93,7 @@ fn main() {
     let i=0;
     cmd_read(&mut comm, i * 0x1000, 0x1000);
 
-    //cmd_read(&interface, 0, 0x1000);
+    //cmd_read(&mut comm, 0, 0x1000);
 
 }
 
