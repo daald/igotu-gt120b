@@ -21,26 +21,6 @@ pub struct IntfBulk {
   interface: Interface,
 }
 
-pub fn init_intf_bulk() -> IntfBulk {
-    let di = nusb::list_devices()
-        .unwrap()
-        .find(|d| d.vendor_id() == DEVID_VENDOR && d.product_id() == DEVID_PRODUCT)
-        .expect("Cannot find device");
-
-    println!("Device info: {di:?}");
-
-    let device = di.open().unwrap();
-    let interface = device.detach_and_claim_interface(DEVICE_INTERFACE).unwrap();
-
-    // set control line state request - needed for the device to reply in BULK mode
-    //device.control_out_blocking(handle, 0x21, 0x22 /* set line state*/, 3, 0, NULL, 0, 2000);
-
-    let mut intf = IntfBulk{device: device, interface: interface};
-    intf.ctrl_set_line_state();
-
-    return intf;
-}
-
 impl Intf for IntfBulk {
   fn send_and_receive(&mut self, to_device: Vec<u8>) -> Vec<u8> {
     let queue = self.interface.bulk_in_queue(BULK_EP_IN);
@@ -61,6 +41,25 @@ impl Intf for IntfBulk {
 }
 
 impl IntfBulk {
+
+  pub fn new() -> Self {
+    let di = nusb::list_devices()
+        .unwrap()
+        .find(|d| d.vendor_id() == DEVID_VENDOR && d.product_id() == DEVID_PRODUCT)
+        .expect("Cannot find device");
+
+    println!("Device info: {di:?}");
+
+    let device = di.open().unwrap();
+    let interface = device.detach_and_claim_interface(DEVICE_INTERFACE).unwrap();
+
+    // set control line state request - needed for the device to reply in BULK mode
+    //device.control_out_blocking(handle, 0x21, 0x22 /* set line state*/, 3, 0, NULL, 0, 2000);
+
+    let mut self_ = Self{device: device, interface: interface};
+    self_.ctrl_set_line_state();
+    return self_;
+  }
 
   fn read_answer(&mut self, mut in_queue: Queue<RequestBuffer>) -> Vec<u8> {
     loop {

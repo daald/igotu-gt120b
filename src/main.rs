@@ -6,13 +6,13 @@ use std::env;
 
 //mod comm;
 mod comm_bulk;
-use crate::comm_bulk::CommBulk;
 mod intf_bulk;
 mod intf_file;
 mod intf;
+use crate::comm_bulk::CommBulk;
 use crate::intf::Intf;
-
-//use crate::intf_bulk::IntfBulk;
+use crate::intf_bulk::IntfBulk;
+use crate::intf_file::IntfFile;
 
 
 
@@ -29,9 +29,9 @@ fn main() {
     }
 
     let intf:Box<dyn Intf> = if simulation {
-        Box::new(intf_file::init_intf_file())
+        Box::new(IntfFile::new())
     } else {
-        Box::new(intf_bulk::init_intf_bulk())
+        Box::new(IntfBulk::new())
     };
     let mut comm = CommBulk{intf: intf};
     //let comm = CommBulk {};

@@ -1,3 +1,5 @@
+-- put or link to: ~/.wireshark/plugins/
+
 -- Simple Wireshark Lua dissector for a custom protocol
 local my_proto = Proto("igotu", "i-gotU GT-120")
 

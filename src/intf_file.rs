@@ -19,7 +19,8 @@ struct InOut {
   line_num: usize,
 }
 
-pub fn init_intf_file() -> IntfFile {
+impl IntfFile {
+  pub fn new() -> Self {
     println!("\n\nRUNNING SIMULATOR\n\n");
 
     let mut result = Vec::new();
@@ -36,7 +37,8 @@ pub fn init_intf_file() -> IntfFile {
             println!("Unknown line {line}");
         }
     }
-    return IntfFile{lines: result, next_line: 0};
+    return Self{lines: result, next_line: 0};
+  }
 }
 
 impl Intf for IntfFile {
