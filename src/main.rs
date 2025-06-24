@@ -1,4 +1,3 @@
-use std::env;
 //use futures_lite::future::block_on;
 //use nusb::transfer::{ RequestBuffer, ControlOut, ControlType, Recipient, Queue };
 //use nusb::{ Device, Interface };
@@ -13,23 +12,36 @@ use crate::comm_bulk::CommBulk;
 use crate::intf::Intf;
 use crate::intf_bulk::IntfBulk;
 use crate::intf_file::IntfFile;
+use clap::Parser;
+
+/// Simple program to greet a person
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// Use a real device instead of a simulation
+    #[arg(short, long, default_value_t = false)]
+    real: bool,
+
+    /// Number of times to greet
+    //#[arg(short, long, default_value_t = 1)]
+    //count: u8,
+
+    /// Run some more commands to match replay file
+    #[arg(short, long, default_value_t = false)]
+    bestreplay: bool,
+}
 
 fn main() {
-    println!("Hello, world!");
+    let args = Args::parse();
 
     env_logger::init();
 
-    let args: Vec<String> = env::args().collect();
-    dbg!(&args);
-    let mut simulation = true;
-    if args.len() > 1 && args[1] == "--real" {
-        simulation = false;
-    }
+    //dbg!(&args);
 
-    let intf: Box<dyn Intf> = if simulation {
-        Box::new(IntfFile::new())
-    } else {
+    let intf: Box<dyn Intf> = if args.real {
         Box::new(IntfBulk::new())
+    } else {
+        Box::new(IntfFile::new())
     };
     let mut comm = CommBulk { intf: intf };
     //let comm = CommBulk {};
@@ -69,6 +81,15 @@ fn main() {
     } else {
         // assumption: 8xff is some signal to send this setsomething command
         panic!("Unknown device state. needs more debugging");
+    }
+
+    if args.bestreplay {
+        // same again? at least check that the two results are squal
+        let count2 = cmd_count(&mut comm);
+        println!("count: {count}");
+        let payload2 = cmd_read(&mut comm, 0x1fff80, 0x0008); // from data dump of original software. no clue what is expected here // TODO force all FFs?
+        assert_eq!(count, count2);
+        assert_eq!(payload2, payload2);
     }
 
     if comm.is_real() {
@@ -113,6 +134,8 @@ fn main() {
     cmd_read(&mut comm, i * 0x1000, 0x1000);
 
     //cmd_read(&mut comm, 0, 0x1000);
+
+    println!("END");
 }
 
 /*
