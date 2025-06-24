@@ -71,10 +71,35 @@ fn main() {
         panic!("Unknown device state. needs more debugging");
     }
 
-
     if comm.is_real() {
         panic!("safety stop");
     }
+
+    // same same
+    let count2 = cmd_count(&mut comm);
+    let payload2 = cmd_read(&mut comm, 0x1fff80, 0x0008); // from data dump of original software. no clue what is expected here // TODO force all FFs?
+
+    /*
+    Unknown query: b'\x93\x0b\x03\x00\x1d\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00B\x93\x05\x07\x00\x08\x04\x03\x1f\xff\x80', r>
+      b'\x93\x0b\x03\x00\x1d\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00B\x93\x05\x07\x00\x08\x04\x03\x1f\xff\x80', returned 8
+    ........m >  b'\x93\x05\x07\x00\xea\x04\x03\x00\x00\x00\x00\x00\x00\x00\x00p'
+    <  b'\x10\x0e\x00\x00\x19\x008\x00\x07\x00\x00\x02\x00\x00\x00\x00GT120B-0D66\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\>
+    ......8.........GT120B-0D66...............................................................................................>
+    <  b'\x00\x06\x02b'
+    */
+
+    cmd_read(&mut comm, 0x000000, 0x00ea); // from data dump of original software. no clue why these offsets/sizes
+    cmd_read(&mut comm, 0x031000, 0x0100); // from data dump of original software. no clue
+    cmd_read(&mut comm, 0x032080, 0x0100); // from data dump of original software. no clue
+    cmd_read(&mut comm, 0x033f80, 0x0080); // from data dump of original software. no clue
+    cmd_read(&mut comm, 0x001100, 0x0f00); // from data dump of original software. no clue
+    cmd_read(&mut comm, 0x002100, 0x0f00); // from data dump of original software. no clue
+    cmd_read(&mut comm, 0x003100, 0x0f00); // from data dump of original software. no clue
+    cmd_read(&mut comm, 0x004100, 0x0f00); // from data dump of original software. no clue
+    cmd_read(&mut comm, 0x005100, 0x0f00); // from data dump of original software. no clue
+    cmd_read(&mut comm, 0x006100, 0x0f00); // from data dump of original software. no clue
+    cmd_read(&mut comm, 0x007100, 0x0f00); // from data dump of original software. no clue
+    cmd_read(&mut comm, 0x008100, 0x0f00); // from data dump of original software. no clue
 
     let blocks = 1 + (count + 0x7f) / 0x80;
     println!("blocks: {blocks}");
