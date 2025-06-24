@@ -2,7 +2,7 @@ use std::env;
 //use futures_lite::future::block_on;
 //use nusb::transfer::{ RequestBuffer, ControlOut, ControlType, Recipient, Queue };
 //use nusb::{ Device, Interface };
-//use hex_literal::hex;    //use: hex!
+use hex_literal::hex; //use: hex!
 
 //mod comm;
 mod comm_bulk;
@@ -123,7 +123,7 @@ enum Model {
 
 fn cmd_nmea_switch(comm: &mut CommBulk, _enable: bool) {
     println!("Send cmd_nmea_switch");
-    let mut command: Vec<u8> = vec![0x93, 0x01, 0x01];
+    let mut command: Vec<u8> = hex!["930101"].to_vec();
 
     // ignoring this: command[3] = enable ? 0x00 : 0x03;
     command.push(0x03); // 120b needs 0x03. this was the value for disabled, but it means enabled for 120b
@@ -140,7 +140,7 @@ fn cmd_nmea_switch(comm: &mut CommBulk, _enable: bool) {
 
 fn cmd_model(comm: &mut CommBulk) -> Model {
     println!("Send cmd_model");
-    let command: Vec<u8> = vec![0x93, 0x05, 0x04, 0x00, 0x03, 0x01, 0x9f];
+    let command: Vec<u8> = hex!["9305040003019f"].to_vec();
 
     let answer = comm.simple_cmd_return(command); //[0x93,0x00,0x03,0xc2,0x20,0x15,0x73].to_vec());
                                                   /*
@@ -167,7 +167,7 @@ fn cmd_model(comm: &mut CommBulk) -> Model {
 
 fn cmd_identification(comm: &mut CommBulk) {
     println!("Send cmd_identification");
-    let command: Vec<u8> = vec![0x93, 0x0a];
+    let command: Vec<u8> = hex!["930a"].to_vec();
 
     let answer = comm.simple_cmd_return(command);
 
@@ -203,7 +203,7 @@ fn cmd_identification(comm: &mut CommBulk) {
 
 fn cmd_count(comm: &mut CommBulk) -> u16 {
     println!("Send cmd_count");
-    let command: Vec<u8> = vec![0x93, 0x0b, 0x03, 0x00, 0x1d];
+    let command: Vec<u8> = hex!["930b03001d"].to_vec();
 
     let answer = comm.simple_cmd_return(command);
 
@@ -229,7 +229,7 @@ fn cmd_count(comm: &mut CommBulk) -> u16 {
 
 fn cmd_read(comm: &mut CommBulk, pos: u32, size: u16) -> Vec<u8> {
     println!("Send cmd_read");
-    let mut command: Vec<u8> = vec![0x93, 0x05, 0x07]; //,0,0,0,0,0,0,0];
+    let mut command: Vec<u8> = hex!["930507"].to_vec(); //,0,0,0,0,0,0,0];
 
     println!("size: {size:x}  pos: {pos:x}");
 
