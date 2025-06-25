@@ -155,29 +155,50 @@ fn main() {
     */
     // ./cargo-run.sh --bestreplay
 
+    {
+        let count = cmd_count(&mut comm);
+        println!("count: {count}");
+    }
     cmd_read(&mut comm, 0x031000, 0x0100); // from data dump of original software. no clue
-    cmd_read(&mut comm, 0x032080, 0x0100); // from data dump of original software. no clue
+    cmd_read(&mut comm, 0x031100, 0x0f00); // from data dump of original software. no clue
+    cmd_read(&mut comm, 0x032000, 0x0100); // from data dump of original software. no clue
+    cmd_read(&mut comm, 0x033000, 0x0100); // from data dump of original software. no clue
     cmd_read(&mut comm, 0x033f80, 0x0080); // from data dump of original software. no clue
-    cmd_read(&mut comm, 0x001100, 0x0f00); // from data dump of original software. no clue
-    cmd_read(&mut comm, 0x002100, 0x0f00); // from data dump of original software. no clue
-    cmd_read(&mut comm, 0x003100, 0x0f00); // from data dump of original software. no clue
-    cmd_read(&mut comm, 0x004100, 0x0f00); // from data dump of original software. no clue
-    cmd_read(&mut comm, 0x005100, 0x0f00); // from data dump of original software. no clue
-    cmd_read(&mut comm, 0x006100, 0x0f00); // from data dump of original software. no clue
-    cmd_read(&mut comm, 0x007100, 0x0f00); // from data dump of original software. no clue
-    cmd_read(&mut comm, 0x008100, 0x0f00); // from data dump of original software. no clue
 
-    let blocks = 1 + (count + 0x7f) / 0x80;
-
-    println!("Number of points: {count}");
-
-    let blocks = 1 + (count as u32 + 0x7f) / 0x80;
-
-    println!("blocks: {blocks}");
+    let blocks = 47;
     for i in 0..blocks {
         println!("read block {i}");
-        cmd_read(&mut comm, i * 0x1000, 0x1000);
+        cmd_read(&mut comm, i * 0x001000 + 0x001000, 0x0100); // from data dump of original software. no clue
+        cmd_read(&mut comm, i * 0x001000 + 0x001100, 0x0f00); // from data dump of original software. no clue
     }
+
+    cmd_read(&mut comm, 0x030000, 0x0100); // from data dump of original software. no clue
+    cmd_read(&mut comm, 0x030100, 0x0f00); // from data dump of original software. no clue
+    cmd_read(&mut comm, 0x031000, 0x0100); // from data dump of original software. no clue
+    cmd_read(&mut comm, 0x031f80, 0x0080); // from data dump of original software. no clue
+
+    cmd_read(&mut comm, 0x031100, 0x0e80); // from data dump of original software. no clue
+
+    //> 93:11:02:00:80:00:00:00:00:00:00:00:00:00:00:da
+    // big answer
+
+    //TODO
+
+    /*
+    {
+        let blocks = 1 + (count + 0x7f) / 0x80;
+
+        println!("Number of points: {count}");
+
+        let blocks = 1 + (count as u32 + 0x7f) / 0x80;
+
+        println!("blocks: {blocks}");
+        for i in 0..blocks {
+            println!("read block {i}");
+            cmd_read(&mut comm, i * 0x1000, 0x1000);
+        }
+    }
+    */
 
     //cmd_read(&mut comm, 0, 0x1000);
 
@@ -324,10 +345,8 @@ fn cmd_count(comm: &mut CommBulk) -> u16 {
 }
 
 fn cmd_read(comm: &mut CommBulk, pos: u32, size: u16) -> Vec<u8> {
-    println!("Send cmd_read");
+    println!("Send cmd_read (size: {size:04x}  pos: {pos:06x}");
     let mut command: Vec<u8> = hex!["930507"].to_vec(); //,0,0,0,0,0,0,0];
-
-    println!("size: {size:x}  pos: {pos:x}");
 
     //    command[3] = (size >> 0x08) & 0xff;
     //    command[4] = (size >> 0x00) & 0xff;
