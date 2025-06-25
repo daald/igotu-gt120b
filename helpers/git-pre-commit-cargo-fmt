@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# use "cargo fmt", NOT "rustfmt" - they have different formattings!
+# * https://gist.github.com/hryniuk/e3f4ae34e37947d0ff55a3f63add90f8
+# ln -rvs helpers/git-pre-commit-cargo-fmt .git/hooks/pre-commit
+
+diff=$(cargo fmt -- --check)
+result=$?
+
+if [[ ${result} -ne 0 ]] ; then
+    cat <<\EOF
+There are some code style issues, run `cargo fmt` first.
+EOF
+    exit 1
+fi
+
+exit 0
