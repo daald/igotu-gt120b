@@ -110,6 +110,51 @@ fn main() {
     */
 
     cmd_read(&mut comm, 0x000000, 0x00ea); // from data dump of original software. no clue why these offsets/sizes
+
+    /*
+    Simple cmd [93, 0B, 03, 00, 1D, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 42]
+    SIMULATOR >#20: Count
+    SIMULATOR <#21:
+    count: 1538
+    count: 1538, 0602
+    Send cmd_read
+    size: 8  pos: 1fff80
+    Simple cmd [93, 05, 07, 00, 08, 04, 03, 1F, FF, 80, 00, 00, 00, 00, 00, B4]
+    SIMULATOR >#23: Read (small)
+    SIMULATOR <#25:
+    Send cmd_read
+    size: ea  pos: 0
+    Simple cmd [93, 05, 07, 00, EA, 04, 03, 00, 00, 00, 00, 00, 00, 00, 00, 70]
+    SIMULATOR >#28: Read (big)
+    SIMULATOR <#30:
+
+    thread 'main' panicked at src/comm_bulk.rs:53:9:
+    Checksum error in answer. actual: 00, expected: 8e
+    stack backtrace:
+       0: rust_begin_unwind
+                 at /rustc/4d91de4e48198da2e33413efdcd9cd2cc0c46688/library/std/src/panicking.rs:692:5
+       1: core::panicking::panic_fmt
+                 at /rustc/4d91de4e48198da2e33413efdcd9cd2cc0c46688/library/core/src/panicking.rs:75:14
+       2: igotu_gt120::comm_bulk::verify_answer_checksum_extract_payload
+                 at ./src/comm_bulk.rs:53:9
+       3: igotu_gt120::comm_bulk::CommBulk::simple_cmd_return
+                 at ./src/comm_bulk.rs:21:16
+       4: igotu_gt120::cmd_read
+                 at ./src/main.rs:298:18
+       5: igotu_gt120::main
+                 at ./src/main.rs:112:5
+       6: core::ops::function::FnOnce::call_once
+                 at /rustc/4d91de4e48198da2e33413efdcd9cd2cc0c46688/library/core/src/ops/function.rs:250:5
+    note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+
+
+    ==> conclusion: auch lange (aufgeteilte) antworten haben eine korrekte Längenangabe und eine checksum (am Ende des zusammengesetzten Teils). Ergo muss intf_*.send_and_receive komplexer werden, da dort der incoming stream noch nicht geschlossen ist.
+
+
+    */
+    // ./cargo-run.sh --bestreplay
+
     cmd_read(&mut comm, 0x031000, 0x0100); // from data dump of original software. no clue
     cmd_read(&mut comm, 0x032080, 0x0100); // from data dump of original software. no clue
     cmd_read(&mut comm, 0x033f80, 0x0080); // from data dump of original software. no clue
@@ -178,13 +223,14 @@ fn cmd_nmea_switch(comm: &mut CommBulk, _enable: bool) {
     command.push(0x03); // 120b needs 0x03. this was the value for disabled, but it means enabled for 120b
 
     comm.simple_cmd_eqresult(command, vec![]); //[0x93,0x00,0x00,0x6d].to_vec());
-                                               /*
-                                               NmeaSwitchCommand
-                                               3347	55.005277	host	3.8.1	USB	64	URB_BULK in						0
-                                               3399	55.554806	host	3.8.1	USB	80	URB_BULK out	93010103000000000000000000000068	16
-                                               3400	55.554842	3.8.1	host	USB	64	URB_BULK out						0
-                                               3401	55.555664	3.8.1	host	USB	68	URB_BULK in	9300006d				4
-                                               */
+
+    /*
+    NmeaSwitchCommand
+    3347	55.005277	host	3.8.1	USB	64	URB_BULK in						0
+    3399	55.554806	host	3.8.1	USB	80	URB_BULK out	93010103000000000000000000000068	16
+    3400	55.554842	3.8.1	host	USB	64	URB_BULK out						0
+    3401	55.555664	3.8.1	host	USB	68	URB_BULK in	9300006d				4
+    */
 }
 
 fn cmd_model(comm: &mut CommBulk) -> Model {
@@ -192,13 +238,14 @@ fn cmd_model(comm: &mut CommBulk) -> Model {
     let command: Vec<u8> = hex!["9305040003019f"].to_vec();
 
     let answer = comm.simple_cmd_return(command); //[0x93,0x00,0x03,0xc2,0x20,0x15,0x73].to_vec());
-                                                  /*
-                                                  ModelCommand
-                                                  3402	55.555916	host	3.8.1	USB	64	URB_BULK in						0
-                                                  3403	55.569024	host	3.8.1	USB	80	URB_BULK out	9305040003019f0000000000000000c1	16
-                                                  3404	55.569095	3.8.1	host	USB	64	URB_BULK out						0
-                                                  3405	55.569261	3.8.1	host	USB	71	URB_BULK in	930003c2201573				7
-                                                  */
+
+    /*
+    ModelCommand
+    3402	55.555916	host	3.8.1	USB	64	URB_BULK in						0
+    3403	55.569024	host	3.8.1	USB	80	URB_BULK out	9305040003019f0000000000000000c1	16
+    3404	55.569095	3.8.1	host	USB	64	URB_BULK out						0
+    3405	55.569261	3.8.1	host	USB	71	URB_BULK in	930003c2201573				7
+    */
 
     if answer[0] != 0xc2 || answer[1] != 0x20 || answer.len() != 3 {
         panic!("Unexpected answer: {answer:02x?}");
