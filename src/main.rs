@@ -97,8 +97,8 @@ fn main() {
     }
 
     // same same
-    let count2 = cmd_count(&mut comm);
-    let payload2 = cmd_read(&mut comm, 0x1fff80, 0x0008); // from data dump of original software. no clue what is expected here // TODO force all FFs?
+    //let count2 = cmd_count(&mut comm);
+    //let payload2 = cmd_read(&mut comm, 0x1fff80, 0x0008); // from data dump of original software. no clue what is expected here // TODO force all FFs?
 
     /*
     Unknown query: b'\x93\x0b\x03\x00\x1d\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00B\x93\x05\x07\x00\x08\x04\x03\x1f\xff\x80', r>
@@ -123,15 +123,16 @@ fn main() {
     cmd_read(&mut comm, 0x008100, 0x0f00); // from data dump of original software. no clue
 
     let blocks = 1 + (count + 0x7f) / 0x80;
+
+    println!("Number of points: {count}");
+
+    let blocks = 1 + (count as u32 + 0x7f) / 0x80;
+
     println!("blocks: {blocks}");
-    /*
-                for (unsigned i = 0; i < blocks; ++i) {
-                    emit commandRunning(i, blocks);
-                    if (p->cancelRequested())
-                        throw Exception(IgotuControl::tr("Cancelled"));
-    */
-    let i = 0;
-    cmd_read(&mut comm, i * 0x1000, 0x1000);
+    for i in 0..blocks {
+        println!("read block {i}");
+        cmd_read(&mut comm, i * 0x1000, 0x1000);
+    }
 
     //cmd_read(&mut comm, 0, 0x1000);
 
@@ -280,6 +281,12 @@ fn cmd_read(comm: &mut CommBulk, pos: u32, size: u16) -> Vec<u8> {
     let mut command: Vec<u8> = hex!["930507"].to_vec(); //,0,0,0,0,0,0,0];
 
     println!("size: {size:x}  pos: {pos:x}");
+
+    //    command[3] = (size >> 0x08) & 0xff;
+    //    command[4] = (size >> 0x00) & 0xff;
+    //    command[7] = (pos >> 0x10) & 0xff;
+    //    command[8] = (pos >> 0x08) & 0xff;
+    //    command[9] = (pos >> 0x00) & 0xff;
 
     command.extend(&size.to_be_bytes());
     command.push(0x04);
