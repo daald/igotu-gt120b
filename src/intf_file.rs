@@ -60,6 +60,7 @@ impl IntfFile {
 impl Intf for IntfFile {
     fn send_and_receive(&mut self, to_device: Vec<u8>) -> Vec<u8> {
         let out_line = &self.lines[self.next_line];
+        self.next_line += 1;
         if !out_line.comment.is_empty() {
             println!("SIMULATOR >#{}: {}", out_line.line_num, out_line.comment);
         }
@@ -73,16 +74,24 @@ impl Intf for IntfFile {
             );
         }
 
-        self.next_line += 1;
         let in_line = &self.lines[self.next_line];
+        self.next_line += 1;
         if !out_line.comment.is_empty() {
             println!("SIMULATOR <#{}: {}", in_line.line_num, in_line.comment);
         }
         if in_line.out {
             panic!("SIMULATOR <#{}: Not a response in line", in_line.line_num);
         }
-        self.next_line += 1;
-        return in_line.line.clone();
+        let mut line = in_line.line.clone();
+        while self.next_line < (&self.lines).len() && !&self.lines[self.next_line].out {
+            let in_line = &self.lines[self.next_line];
+            self.next_line += 1;
+            if !out_line.comment.is_empty() {
+                println!("SIMULATOR <+#{}: {}", in_line.line_num, in_line.comment);
+            }
+            line.append(&mut in_line.line.to_vec());
+        }
+        return line;
     }
 
     fn is_real(&self) -> bool {
