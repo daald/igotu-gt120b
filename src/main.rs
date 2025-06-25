@@ -63,10 +63,7 @@ fn main() {
 
     if payload.len() == 8 && payload == vec![0xff; 8] {
         // TODO set something. it's the time in epoc in both [s] and [ms], but for what reason?  --   usb.capdata[0] == 0x93 and usb.capdata[1] == 0x09
-        cmd_unknown_time(&mut comm);
-
-        //> 93:09:20:cd:d6:3d:9e:36:06:00:da:24:3e:68:00:e6  or 93:09:b0:cd:7f:a0:39360600d28c37680056
-        //< 93:00:00:6d
+        cmd_set_time(&mut comm, 1753997870971000_u64);
     } else {
         // assumption: 8xff is some signal to send this setsomething command
         panic!("Unknown device state. needs more debugging");
@@ -183,9 +180,7 @@ fn main() {
         "Unknown device state. needs more debugging"
     );
 
-    cmd_read(&mut comm, 0x031100, 0x0e80); // from data dump of original software. no clue
-
-    cmd_unknown_time(&mut comm);
+    cmd_set_time(&mut comm, 1753997870971000u64);
 
     /*
     {
@@ -365,9 +360,15 @@ fn cmd_count(comm: &mut CommBulk) -> u16 {
     */
 }
 
-fn cmd_unknown_time(comm: &mut CommBulk) {
-    println!("Send cmd_unknown_time");
-    let command: Vec<u8> = hex!["9309F8352A4F9E360600FD253E68"].to_vec();
+fn cmd_set_time(comm: &mut CommBulk, time_ns: u64) {
+    println!("Send cmd_set_time");
+    let mut command: Vec<u8> = hex!["9309"].to_vec();
+
+    //let time_ns = 1753997870971000_u64;
+    let time_s = time_ns / 1_000_000;
+
+    command.extend(&time_ns.to_le_bytes()[0..8]);
+    command.extend(&time_s.to_le_bytes()[0..5]);
 
     comm.simple_cmd_eqresult(command, vec![]);
 }
