@@ -20,13 +20,17 @@ struct InOut {
 
 impl IntfFile {
     pub fn new() -> Self {
-        println!("\n\nRUNNING SIMULATOR\n\n");
+        let replay_file = "src/replay-120b.txt";
+        //let replay_file = "src/gt-120b-kvm-sesson-20250529.json.txt";
+        //let replay_file = "src/gt-120b-kvm-sesson-20250603.json.txt";
+
+        println!("\n\nRUNNING SIMULATOR with file {}\n\n", replay_file);
 
         let mut result = Vec::new();
 
         let mut line_num = 0;
         let mut next_comment: String = "".to_string();
-        for line in read_to_string("src/replay-120b.txt").unwrap().lines() {
+        for line in read_to_string(replay_file).unwrap().lines() {
             line_num += 1;
             let next_isout;
             if line == "" || line.starts_with("#") {
@@ -61,6 +65,8 @@ impl IntfFile {
         self.next_line += 1;
         if !out_line.comment.is_empty() {
             println!("SIMULATOR >#{}: {}", out_line.line_num, out_line.comment);
+        } else {
+            println!("SIMULATOR >#{}", out_line.line_num);
         }
         if !out_line.out {
             panic!("SIMULATOR >#{}: No cmd-line", out_line.line_num);
@@ -83,6 +89,8 @@ impl Intf for IntfFile {
         self.next_line += 1;
         if !in_line.comment.is_empty() {
             println!("SIMULATOR <#{}: {}", in_line.line_num, in_line.comment);
+        } else {
+            println!("SIMULATOR <#{}", in_line.line_num);
         }
         if in_line.out {
             panic!("SIMULATOR <#{}: Not a response in line", in_line.line_num);

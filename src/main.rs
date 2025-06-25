@@ -179,6 +179,8 @@ enum Model {
 //==============================================================================
 
 fn cmdblock_identify(comm: &mut CommBulk) -> (u16) {
+    println!("In cmdblock_identify()");
+
     // NmeaSwitchCommand enable=1
     cmd_nmea_switch(comm, true);
 
