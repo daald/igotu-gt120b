@@ -31,6 +31,14 @@ impl Intf for IntfBulk {
         return answer;
     }
 
+    fn cmd_oneway_devicereset(&mut self, to_device: Vec<u8>) {
+        block_on(self.interface.bulk_out(BULK_EP_OUT, to_device))
+            .into_result()
+            .unwrap();
+
+        println!("  TODO: wait for device reset");
+    }
+
     fn is_real(&self) -> bool {
         return true;
     }

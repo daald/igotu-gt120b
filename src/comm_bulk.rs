@@ -27,6 +27,14 @@ impl CommBulk {
         check_full_answer(answer, expect_from_device);
     }
 
+    pub fn simple_cmd_oneway_devicereset(&mut self, to_device_: Vec<u8>) {
+        let mut to_device = to_device_.clone();
+        pad_and_checksum(&mut to_device);
+        println!("Simple cmd {to_device:02X?}");
+
+        let answer = self.intf.cmd_oneway_devicereset(to_device);
+    }
+
     pub fn is_real(&self) -> bool {
         return self.intf.is_real();
     }

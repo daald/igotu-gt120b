@@ -50,19 +50,7 @@ fn main() {
     // set line coding request - probably not needed
     //sync_send_control(handle, 0x21, 0x20 /* set line coding*/, 0, 0, "\x00\xc2\x01\x00\x00\x00\x08", 7, 2000 );
 
-    // NmeaSwitchCommand enable=1
-    cmd_nmea_switch(&mut comm, true);
-
-    // ModelCommand
-    let model = cmd_model(&mut comm);
-    println!("Model: {model}");
-
-    // IdentificationCommand
-    cmd_identification(&mut comm);
-
-    // CountCommand
-    let count = cmd_count(&mut comm);
-    println!("count: {count}");
+    cmdblock_identify(&mut comm);
 
     // ./decode-igotu-trace3+120b.py says ReadCommand(pos = 0x1fff80, size = 0x0008) but this is not calculatable with cpp code. I guess another impl from manufacturer
     // 3411	55.575353	host	3.8.1	USB	80	URB_BULK out	930b03001d0000000000000000000042	16		CountCommand
@@ -75,6 +63,7 @@ fn main() {
 
     if payload.len() == 8 && payload == vec![0xff; 8] {
         // TODO set something. it's the time in epoc in both [s] and [ms], but for what reason?  --   usb.capdata[0] == 0x93 and usb.capdata[1] == 0x09
+        cmd_unknown_time(&mut comm);
 
         //> 93:09:20:cd:d6:3d:9e:36:06:00:da:24:3e:68:00:e6  or 93:09:b0:cd:7f:a0:39360600d28c37680056
         //< 93:00:00:6d
@@ -88,7 +77,6 @@ fn main() {
         let count2 = cmd_count(&mut comm);
         println!("count: {count2}, {count2:04x}");
         let payload2 = cmd_read(&mut comm, 0x1fff80, 0x0008); // from data dump of original software. no clue what is expected here // TODO force all FFs?
-        assert_eq!(count, count2);
         assert_eq!(payload2, payload2);
     }
 
@@ -183,6 +171,21 @@ fn main() {
     // big answer
 
     //TODO
+    cmd_delete_reboot(&mut comm);
+
+    // here: device reboots itself without returning an answer
+
+    cmdblock_identify(&mut comm);
+
+    let payload = cmd_read(&mut comm, 0x1fff80, 0x0008); // from data dump of original software. no clue what is expected here // TODO force all FFs?
+    assert!(
+        payload.len() == 8 && payload == vec![0xff; 8],
+        "Unknown device state. needs more debugging"
+    );
+
+    cmd_read(&mut comm, 0x031100, 0x0e80); // from data dump of original software. no clue
+
+    cmd_unknown_time(&mut comm);
 
     /*
     {
@@ -235,6 +238,24 @@ enum Model {
 //==============================================================================
 
 //==============================================================================
+
+fn cmdblock_identify(comm: &mut CommBulk) {
+    // NmeaSwitchCommand enable=1
+    cmd_nmea_switch(comm, true);
+
+    // ModelCommand
+    let model = cmd_model(comm);
+    println!("Model: {model}");
+
+    // IdentificationCommand
+    cmd_identification(comm);
+
+    // CountCommand
+    let count = cmd_count(comm);
+    println!("count: {count}");
+
+    //TODO return all identification results
+}
 
 fn cmd_nmea_switch(comm: &mut CommBulk, _enable: bool) {
     println!("Send cmd_nmea_switch");
@@ -344,6 +365,13 @@ fn cmd_count(comm: &mut CommBulk) -> u16 {
     */
 }
 
+fn cmd_unknown_time(comm: &mut CommBulk) {
+    println!("Send cmd_unknown_time");
+    let command: Vec<u8> = hex!["9309F8352A4F9E360600FD253E68"].to_vec();
+
+    comm.simple_cmd_eqresult(command, vec![]);
+}
+
 fn cmd_read(comm: &mut CommBulk, pos: u32, size: u16) -> Vec<u8> {
     println!("Send cmd_read (size: {size:04x}  pos: {pos:06x}");
     let mut command: Vec<u8> = hex!["930507"].to_vec(); //,0,0,0,0,0,0,0];
@@ -391,6 +419,18 @@ fn cmd_read(comm: &mut CommBulk, pos: u32, size: u16) -> Vec<u8> {
         3417	55.578739	3.8.1	host	USB	76	URB_BULK in		930008ffffffffffffffff6d			12
 
         */
+}
+
+// TODO research needed
+fn cmd_delete_reboot(comm: &mut CommBulk) {
+    println!("Send cmd_delete_reboot");
+    let command: Vec<u8> = hex!["9311020080"].to_vec();
+
+    comm.simple_cmd_oneway_devicereset(command);
+
+    /*
+    > 93:11:02:00:80:00:00:00:00:00:00:00:00:00:00:da
+    */
 }
 
 //==============================================================================

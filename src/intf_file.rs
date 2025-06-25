@@ -55,10 +55,8 @@ impl IntfFile {
             next_line: 0,
         };
     }
-}
 
-impl Intf for IntfFile {
-    fn send_and_receive(&mut self, to_device: Vec<u8>) -> Vec<u8> {
+    fn sim_send(&mut self, to_device: Vec<u8>) -> &InOut {
         let out_line = &self.lines[self.next_line];
         self.next_line += 1;
         if !out_line.comment.is_empty() {
@@ -73,10 +71,17 @@ impl Intf for IntfFile {
                 out_line.line_num, to_device, out_line.line
             );
         }
+        return out_line;
+    }
+}
+
+impl Intf for IntfFile {
+    fn send_and_receive(&mut self, to_device: Vec<u8>) -> Vec<u8> {
+        self.sim_send(to_device);
 
         let in_line = &self.lines[self.next_line];
         self.next_line += 1;
-        if !out_line.comment.is_empty() {
+        if !in_line.comment.is_empty() {
             println!("SIMULATOR <#{}: {}", in_line.line_num, in_line.comment);
         }
         if in_line.out {
@@ -86,12 +91,17 @@ impl Intf for IntfFile {
         while self.next_line < (&self.lines).len() && !&self.lines[self.next_line].out {
             let in_line = &self.lines[self.next_line];
             self.next_line += 1;
-            if !out_line.comment.is_empty() {
+            if !in_line.comment.is_empty() {
                 println!("SIMULATOR <+#{}: {}", in_line.line_num, in_line.comment);
             }
             line.append(&mut in_line.line.to_vec());
         }
         return line;
+    }
+
+    fn cmd_oneway_devicereset(&mut self, to_device: Vec<u8>) {
+        let out_line = self.sim_send(to_device);
+        println!("SIMULATOR #{}: Device reset now", out_line.line_num);
     }
 
     fn is_real(&self) -> bool {
