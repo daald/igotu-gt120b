@@ -50,7 +50,7 @@ fn main() {
     // set line coding request - probably not needed
     //sync_send_control(handle, 0x21, 0x20 /* set line coding*/, 0, 0, "\x00\xc2\x01\x00\x00\x00\x08", 7, 2000 );
 
-    cmdblock_identify(&mut comm);
+    let (id_count) = cmdblock_identify(&mut comm);
 
     // ./decode-igotu-trace3+120b.py says ReadCommand(pos = 0x1fff80, size = 0x0008) but this is not calculatable with cpp code. I guess another impl from manufacturer
     // 3411	55.575353	host	3.8.1	USB	80	URB_BULK out	930b03001d0000000000000000000042	16		CountCommand
@@ -59,90 +59,40 @@ fn main() {
     // 3415	55.578453	host	3.8.1	USB	80	URB_BULK out	930507000804031fff800000000000b4	16		ReadCommand (pos, size)
     // 3417	55.578739	3.8.1	host	USB	76	URB_BULK in		930008ffffffffffffffff6d	12
 
-    let payload = cmd_read(&mut comm, 0x1fff80, 0x0008); // from data dump of original software. no clue what is expected here // TODO force all FFs?
+    let id_read = cmd_read(&mut comm, 0x1fff80, 0x0008); // from data dump of original software. no clue what is expected here // TODO force all FFs?
 
-    if payload.len() == 8 && payload == vec![0xff; 8] {
+    if id_read.len() == 8 && id_read == vec![0xff; 8] {
         // TODO set something. it's the time in epoc in both [s] and [ms], but for what reason?  --   usb.capdata[0] == 0x93 and usb.capdata[1] == 0x09
         cmd_set_time(&mut comm, 1753997870971000_u64);
+
+        //> 93:09:20:cd:d6:3d:9e:36:06:00:da:24:3e:68:00:e6  or 93:09:b0:cd:7f:a0:39360600d28c37680056
+        //< 93:00:00:6d
     } else {
         // assumption: 8xff is some signal to send this setsomething command
         panic!("Unknown device state. needs more debugging");
     }
 
     if args.bestreplay {
+        // run "./cargo-run.sh --bestreplay" for a complete run of the replay file
+
         // same again? at least check that the two results are squal
         let count2 = cmd_count(&mut comm);
         println!("count: {count2}, {count2:04x}");
-        let payload2 = cmd_read(&mut comm, 0x1fff80, 0x0008); // from data dump of original software. no clue what is expected here // TODO force all FFs?
-        assert_eq!(payload2, payload2);
+        assert_eq!(id_count, count2);
+        let read_payload2 = cmd_read(&mut comm, 0x1fff80, 0x0008); // from data dump of original software. no clue what is expected here // TODO force all FFs?
+        assert_eq!(id_read, read_payload2);
     }
 
     if comm.is_real() {
         panic!("safety stop");
     }
 
-    // same same
-    //let count2 = cmd_count(&mut comm);
-    //let payload2 = cmd_read(&mut comm, 0x1fff80, 0x0008); // from data dump of original software. no clue what is expected here // TODO force all FFs?
-
-    /*
-    Unknown query: b'\x93\x0b\x03\x00\x1d\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00B\x93\x05\x07\x00\x08\x04\x03\x1f\xff\x80', r>
-      b'\x93\x0b\x03\x00\x1d\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00B\x93\x05\x07\x00\x08\x04\x03\x1f\xff\x80', returned 8
-    ........m >  b'\x93\x05\x07\x00\xea\x04\x03\x00\x00\x00\x00\x00\x00\x00\x00p'
-    <  b'\x10\x0e\x00\x00\x19\x008\x00\x07\x00\x00\x02\x00\x00\x00\x00GT120B-0D66\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\>
-    ......8.........GT120B-0D66...............................................................................................>
-    <  b'\x00\x06\x02b'
-    */
-
     cmd_read(&mut comm, 0x000000, 0x00ea); // from data dump of original software. no clue why these offsets/sizes
-
-    /*
-    Simple cmd [93, 0B, 03, 00, 1D, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 42]
-    SIMULATOR >#20: Count
-    SIMULATOR <#21:
-    count: 1538
-    count: 1538, 0602
-    Send cmd_read
-    size: 8  pos: 1fff80
-    Simple cmd [93, 05, 07, 00, 08, 04, 03, 1F, FF, 80, 00, 00, 00, 00, 00, B4]
-    SIMULATOR >#23: Read (small)
-    SIMULATOR <#25:
-    Send cmd_read
-    size: ea  pos: 0
-    Simple cmd [93, 05, 07, 00, EA, 04, 03, 00, 00, 00, 00, 00, 00, 00, 00, 70]
-    SIMULATOR >#28: Read (big)
-    SIMULATOR <#30:
-
-    thread 'main' panicked at src/comm_bulk.rs:53:9:
-    Checksum error in answer. actual: 00, expected: 8e
-    stack backtrace:
-       0: rust_begin_unwind
-                 at /rustc/4d91de4e48198da2e33413efdcd9cd2cc0c46688/library/std/src/panicking.rs:692:5
-       1: core::panicking::panic_fmt
-                 at /rustc/4d91de4e48198da2e33413efdcd9cd2cc0c46688/library/core/src/panicking.rs:75:14
-       2: igotu_gt120::comm_bulk::verify_answer_checksum_extract_payload
-                 at ./src/comm_bulk.rs:53:9
-       3: igotu_gt120::comm_bulk::CommBulk::simple_cmd_return
-                 at ./src/comm_bulk.rs:21:16
-       4: igotu_gt120::cmd_read
-                 at ./src/main.rs:298:18
-       5: igotu_gt120::main
-                 at ./src/main.rs:112:5
-       6: core::ops::function::FnOnce::call_once
-                 at /rustc/4d91de4e48198da2e33413efdcd9cd2cc0c46688/library/core/src/ops/function.rs:250:5
-    note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
-
-
-
-    ==> conclusion: auch lange (aufgeteilte) antworten haben eine korrekte Längenangabe und eine checksum (am Ende des zusammengesetzten Teils). Ergo muss intf_*.send_and_receive komplexer werden, da dort der incoming stream noch nicht geschlossen ist.
-
-
-    */
-    // ./cargo-run.sh --bestreplay
 
     {
         let count = cmd_count(&mut comm);
-        println!("count: {count}");
+        println!("count: {count}, {count:04x}");
+        assert_eq!(id_count, count);
     }
     cmd_read(&mut comm, 0x031000, 0x0100); // from data dump of original software. no clue
     cmd_read(&mut comm, 0x031100, 0x0f00); // from data dump of original software. no clue
@@ -164,10 +114,6 @@ fn main() {
 
     cmd_read(&mut comm, 0x031100, 0x0e80); // from data dump of original software. no clue
 
-    //> 93:11:02:00:80:00:00:00:00:00:00:00:00:00:00:da
-    // big answer
-
-    //TODO
     cmd_delete_reboot(&mut comm);
 
     // here: device reboots itself without returning an answer
@@ -180,7 +126,7 @@ fn main() {
         "Unknown device state. needs more debugging"
     );
 
-    cmd_set_time(&mut comm, 1753997870971000u64);
+    cmd_set_time(&mut comm, 1753997893134000u64);
 
     /*
     {
@@ -197,8 +143,6 @@ fn main() {
         }
     }
     */
-
-    //cmd_read(&mut comm, 0, 0x1000);
 
     println!("END");
 }
@@ -234,7 +178,7 @@ enum Model {
 
 //==============================================================================
 
-fn cmdblock_identify(comm: &mut CommBulk) {
+fn cmdblock_identify(comm: &mut CommBulk) -> (u16) {
     // NmeaSwitchCommand enable=1
     cmd_nmea_switch(comm, true);
 
@@ -250,6 +194,7 @@ fn cmdblock_identify(comm: &mut CommBulk) {
     println!("count: {count}");
 
     //TODO return all identification results
+    return (count);
 }
 
 fn cmd_nmea_switch(comm: &mut CommBulk, _enable: bool) {
@@ -371,6 +316,25 @@ fn cmd_set_time(comm: &mut CommBulk, time_ns: u64) {
     command.extend(&time_s.to_le_bytes()[0..5]);
 
     comm.simple_cmd_eqresult(command, vec![]);
+
+    /*
+            example:
+
+            > 9309F8352A4F9E360600FD253E68
+
+
+        3965	83.619018	host	3.7.1	USB	80	URB_BULK out	930920cdd63d9e360600da243e6800e6	16
+                                                                                                        ^^^^^^^^^^ = Thursday, July 31, 2025 9:37:50 PM GMT  in [s]hex		688be22e_h = 1753997870_d [seconds]
+                                                                                        ^^^^^^^^^^^^^^^^ = Thursday, July 31, 2025 9:37:50.971 PM GMT  in [ms]hex
+        29531	374.287401	host	3.8.1	USB	80	URB_BULK out	9309f8352a4f9e360600fd253e68001c	16
+                                                                                                        ^^^^^^^^^^ = Thursday, July 31, 2025 9:38:13 PM GMT  in [s]hex
+                                                                                        ^^^^^^^^^^^^^^^^ = Thursday, July 31, 2025 9:38:13.134 PM GMT  in [ms]hex			063b40755b66b0_h = 1753997893134000_d [nanoseconds]
+
+
+
+    actual:   [93, 09, : 00, 06, 36, 9E, 4F, 2A, 35, F8,: 00, 00, 00, 00, 68, : 7C]
+
+            */
 }
 
 fn cmd_read(comm: &mut CommBulk, pos: u32, size: u16) -> Vec<u8> {
