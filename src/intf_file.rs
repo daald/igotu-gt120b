@@ -15,6 +15,7 @@ struct InOut {
     out: bool,
     line: Vec<u8>,
     line_num: usize,
+    comment: String,
 }
 
 impl IntfFile {
@@ -24,26 +25,30 @@ impl IntfFile {
         let mut result = Vec::new();
 
         let mut line_num = 0;
+        let mut next_comment: String = "".to_string();
         for line in read_to_string("src/replay-120b.txt").unwrap().lines() {
             line_num += 1;
-            if line.starts_with("#") {
+            let next_isout;
+            if line == "" || line.starts_with("#") {
+                if line.starts_with("#: ") {
+                    next_comment = line[2..].trim().to_string();
+                }
+                continue;
             } else if line.starts_with("> ") {
-                result.push(InOut {
-                    out: true,
-                    line: hex::decode(line.to_string()[2..].replace(":", ""))
-                        .expect("Decoding failed"),
-                    line_num: line_num,
-                });
+                next_isout = true;
             } else if line.starts_with("< ") {
-                result.push(InOut {
-                    out: false,
-                    line: hex::decode(line.to_string()[2..].replace(":", ""))
-                        .expect("Decoding failed"),
-                    line_num: line_num,
-                });
+                next_isout = false;
             } else {
                 println!("Unknown line {line}");
+                continue;
             }
+            result.push(InOut {
+                out: next_isout,
+                line: hex::decode(line.to_string()[2..].replace(":", "")).expect("Decoding failed"),
+                line_num: line_num,
+                comment: next_comment,
+            });
+            next_comment = "".to_string();
         }
         return Self {
             lines: result,
@@ -55,20 +60,26 @@ impl IntfFile {
 impl Intf for IntfFile {
     fn send_and_receive(&mut self, to_device: Vec<u8>) -> Vec<u8> {
         let out_line = &self.lines[self.next_line];
+        if !out_line.comment.is_empty() {
+            println!("SIMULATOR >#{}: {}", out_line.line_num, out_line.comment);
+        }
         if !out_line.out {
-            panic!("No cmd-line: #{}", out_line.line_num);
+            panic!("SIMULATOR >#{}: No cmd-line", out_line.line_num);
         }
         if out_line.line != to_device {
             panic!(
-                "Next cmd doesn't match: #{}\nactual:   {:02X?}\nexpected: {:02X?}",
+                "SIMULATOR >#{}: Next cmd doesn't match:\nactual:   {:02X?}\nexpected: {:02X?}",
                 out_line.line_num, to_device, out_line.line
             );
         }
 
         self.next_line += 1;
         let in_line = &self.lines[self.next_line];
+        if !out_line.comment.is_empty() {
+            println!("SIMULATOR <#{}: {}", in_line.line_num, in_line.comment);
+        }
         if in_line.out {
-            panic!("No response line: #{}", in_line.line_num);
+            panic!("SIMULATOR <#{}: Not a response in line", in_line.line_num);
         }
         self.next_line += 1;
         return in_line.line.clone();

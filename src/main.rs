@@ -86,7 +86,7 @@ fn main() {
     if args.bestreplay {
         // same again? at least check that the two results are squal
         let count2 = cmd_count(&mut comm);
-        println!("count: {count}");
+        println!("count: {count2}, {count2:04x}");
         let payload2 = cmd_read(&mut comm, 0x1fff80, 0x0008); // from data dump of original software. no clue what is expected here // TODO force all FFs?
         assert_eq!(count, count2);
         assert_eq!(payload2, payload2);
