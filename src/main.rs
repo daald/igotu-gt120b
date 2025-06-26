@@ -66,11 +66,12 @@ fn main() {
     let id_read = cmd_read(&mut comm, 0x1fff80, 0x0008); // from data dump of original software. no clue what is expected here // TODO force all FFs?
 
     if id_read.len() == 8 && id_read == vec![0xff; 8] {
-        // TODO set something. it's the time in epoc in both [s] and [ms], but for what reason?  --   usb.capdata[0] == 0x93 and usb.capdata[1] == 0x09
-        cmd_set_time(&mut comm, 1753997870971000_u64);
+        // TODO set something. it's the time in epoc in both [s] and [us], but for what reason?  --   usb.capdata[0] == 0x93 and usb.capdata[1] == 0x09
+        let time_us = comm.get_time_micros();
+        cmd_set_time(&mut comm, time_us); //  1753997870971000_u64
 
-        //> 93:09:20:cd:d6:3d:9e:36:06:00:da:24:3e:68:00:e6  or 93:09:b0:cd:7f:a0:39360600d28c37680056
-        //< 93:00:00:6d
+    //> 93:09:20:cd:d6:3d:9e:36:06:00:da:24:3e:68:00:e6  or 93:09:b0:cd:7f:a0:39360600d28c37680056
+    //< 93:00:00:6d
     } else {
         // assumption: 8xff is some signal to send this setsomething command
         panic!("Unknown device state. needs more debugging");
@@ -126,7 +127,8 @@ fn main() {
         "Unknown device state. needs more debugging"
     );
 
-    cmd_set_time(&mut comm, 1753997893134000u64);
+    let time_us = comm.get_time_micros();
+    cmd_set_time(&mut comm, time_us); //  1753997893134000u64
 
     /*
     {
@@ -316,14 +318,14 @@ fn cmd_count(comm: &mut CommBulk) -> u16 {
     */
 }
 
-fn cmd_set_time(comm: &mut CommBulk, time_ns: u64) {
+fn cmd_set_time(comm: &mut CommBulk, time_us: u64) {
     println!("Send cmd_set_time");
     let mut command: Vec<u8> = hex!["9309"].to_vec();
 
-    //let time_ns = 1753997870971000_u64;
-    let time_s = time_ns / 1_000_000;
+    //let time_us = 1753997870971000_u64;
+    let time_s = time_us / 1_000_000;
 
-    command.extend(&time_ns.to_le_bytes()[0..8]);
+    command.extend(&time_us.to_le_bytes()[0..8]);
     command.extend(&time_s.to_le_bytes()[0..5]);
 
     comm.simple_cmd_eqresult(command, vec![]);
@@ -336,10 +338,10 @@ fn cmd_set_time(comm: &mut CommBulk, time_ns: u64) {
 
         3965	83.619018	host	3.7.1	USB	80	URB_BULK out	930920cdd63d9e360600da243e6800e6	16
                                                                                                         ^^^^^^^^^^ = Thursday, July 31, 2025 9:37:50 PM GMT  in [s]hex		688be22e_h = 1753997870_d [seconds]
-                                                                                        ^^^^^^^^^^^^^^^^ = Thursday, July 31, 2025 9:37:50.971 PM GMT  in [ms]hex
+                                                                                        ^^^^^^^^^^^^^^^^ = Thursday, July 31, 2025 9:37:50.971 PM GMT  in [us]hex
         29531	374.287401	host	3.8.1	USB	80	URB_BULK out	9309f8352a4f9e360600fd253e68001c	16
                                                                                                         ^^^^^^^^^^ = Thursday, July 31, 2025 9:38:13 PM GMT  in [s]hex
-                                                                                        ^^^^^^^^^^^^^^^^ = Thursday, July 31, 2025 9:38:13.134 PM GMT  in [ms]hex			063b40755b66b0_h = 1753997893134000_d [nanoseconds]
+                                                                                        ^^^^^^^^^^^^^^^^ = Thursday, July 31, 2025 9:38:13.134 PM GMT  in [us]hex			063b40755b66b0_h = 1753997893134000_d [microseconds]
 
 
 

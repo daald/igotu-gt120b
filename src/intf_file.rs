@@ -115,4 +115,14 @@ impl Intf for IntfFile {
     fn is_real(&self) -> bool {
         return false;
     }
+
+    fn get_time_micros(&self) -> u64 {
+        let comment_line = &self.lines[self.next_line].comment;
+        let i0 = comment_line.find("us=").unwrap();
+        let line2 = comment_line[(i0 + 3)..].to_string();
+        let i1 = line2.find(")").unwrap();
+        let time_us = line2[0..i1].parse::<u64>().unwrap();
+        println!("SIMULATOR: dummy time of us={}", time_us);
+        return time_us;
+    }
 }

@@ -1,6 +1,7 @@
 use futures_lite::future::block_on;
 use nusb::transfer::{ControlOut, ControlType, Queue, Recipient, RequestBuffer};
 use nusb::{Device, Interface};
+use std::time::{Duration, SystemTime};
 //use hex_literal::hex;    //use: hex!
 
 use crate::intf;
@@ -41,6 +42,14 @@ impl Intf for IntfBulk {
 
     fn is_real(&self) -> bool {
         return true;
+    }
+
+    fn get_time_micros(&self) -> u64 {
+        let duration_since_epoch = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap();
+        let timestamp_micros = duration_since_epoch.as_micros();
+        return timestamp_micros as u64;
     }
 }
 

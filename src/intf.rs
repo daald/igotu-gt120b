@@ -3,4 +3,5 @@ pub trait Intf {
     fn cmd_oneway_devicereset(&mut self, to_device: Vec<u8>);
 
     fn is_real(&self) -> bool;
+    fn get_time_micros(&self) -> u64;
 }

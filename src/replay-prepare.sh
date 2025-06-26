@@ -34,10 +34,10 @@ $pl
         echo "#: read (size=$(printf "%04x" 0x$s1$s2), pos=$(printf "%06x" 0x$p1$p2$p3))"
         ;;
       93:09:*)
-        IFS=: read c1 c2 ns8 ns7 ns6 ns5 ns4 ns3 ns2 ns1 s5 s4 s3 s2 s1 ck <<.e
+        IFS=: read c1 c2 us8 us7 us6 us5 us4 us3 us2 us1 s5 s4 s3 s2 s1 ck <<.e
 $pl
 .e
-        echo "#: set_time (ns=$(printf "%d" 0x$ns1$ns2$ns3$ns4$ns5$ns6$ns7$ns8))"
+        echo "#: set_time (us=$(printf "%d" 0x$us1$us2$us3$us4$us5$us6$us7$us8))"
         ;;
       93:11:02:*) echo "#: delete/reboot"; drop_in_lines=1;;
     esac
