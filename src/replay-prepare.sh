@@ -2,6 +2,11 @@
 
 set -e
 
+# * sudo modprobe usbmon && sleep 1 && sudo chgrp wireshark /dev/usbmon3 && sudo chmod g+rw /dev/usbmon3
+# * record using wireshark
+# * usb.capdata[0] == 0x93 and ((usb.urb_type == 'S' and usb.transfer_type == 0x03 and usb.endpoint_address == 0x01) or (usb.urb_type == 'C' and usb.transfer_type == 0x03 and usb.endpoint_address == 0x81))
+# * usb.addr == "3.7.1" or usb.addr == "3.8.1"
+
 drop_in_lines=
 for f in "$@"; do
   jq -r '.[]._source.layers | .usb."usb.src", .usb."usb.dst", ."usb.capdata", ""' <"$f"

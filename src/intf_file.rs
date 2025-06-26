@@ -19,18 +19,18 @@ struct InOut {
 }
 
 impl IntfFile {
-    pub fn new() -> Self {
-        let replay_file = "src/replay-120b.txt";
+    pub fn new(file_name: String) -> Self {
+        //let replay_file = "src/replay-120b.txt";
         //let replay_file = "src/gt-120b-kvm-sesson-20250529.json.txt";
         //let replay_file = "src/gt-120b-kvm-sesson-20250603.json.txt";
 
-        println!("\n\nRUNNING SIMULATOR with file {}\n\n", replay_file);
+        println!("\n\nRUNNING SIMULATOR with file {}\n\n", file_name);
 
         let mut result = Vec::new();
 
         let mut line_num = 0;
         let mut next_comment: String = "".to_string();
-        for line in read_to_string(replay_file).unwrap().lines() {
+        for line in read_to_string(file_name).unwrap().lines() {
             line_num += 1;
             let next_isout;
             if line == "" || line.starts_with("#") {

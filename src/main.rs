@@ -29,6 +29,10 @@ struct Args {
     /// Run some more commands to match replay file
     #[arg(short, long, default_value_t = false)]
     bestreplay: bool,
+
+    /// Filename of simulation replay file
+    #[arg(short, long)]
+    sim_file_name: String,
 }
 
 fn main() {
@@ -41,7 +45,7 @@ fn main() {
     let intf: Box<dyn Intf> = if args.real {
         Box::new(IntfBulk::new())
     } else {
-        Box::new(IntfFile::new())
+        Box::new(IntfFile::new(args.sim_file_name))
     };
     let mut comm = CommBulk { intf: intf };
     //let comm = CommBulk {};
@@ -94,21 +98,18 @@ fn main() {
         println!("count: {count}, {count:04x}");
         assert_eq!(id_count, count);
     }
-    cmd_read(&mut comm, 0x031000, 0x0100); // from data dump of original software. no clue
-    cmd_read(&mut comm, 0x031100, 0x0f00); // from data dump of original software. no clue
-    cmd_read(&mut comm, 0x032000, 0x0100); // from data dump of original software. no clue
-    cmd_read(&mut comm, 0x033000, 0x0100); // from data dump of original software. no clue
+    cmdblock_read_doublet(&mut comm, 0x031000);
+    cmdblock_read_doublet(&mut comm, 0x032000);
+    cmdblock_read_doublet(&mut comm, 0x033000);
     cmd_read(&mut comm, 0x033f80, 0x0080); // from data dump of original software. no clue
 
     let blocks = 47;
     for i in 0..blocks {
         println!("read block {i}");
-        cmd_read(&mut comm, i * 0x001000 + 0x001000, 0x0100); // from data dump of original software. no clue
-        cmd_read(&mut comm, i * 0x001000 + 0x001100, 0x0f00); // from data dump of original software. no clue
+        cmdblock_read_doublet(&mut comm, i * 0x001000 + 0x001000);
     }
 
-    cmd_read(&mut comm, 0x030000, 0x0100); // from data dump of original software. no clue
-    cmd_read(&mut comm, 0x030100, 0x0f00); // from data dump of original software. no clue
+    cmdblock_read_doublet(&mut comm, 0x030000);
     cmd_read(&mut comm, 0x031000, 0x0100); // from data dump of original software. no clue
     cmd_read(&mut comm, 0x031f80, 0x0080); // from data dump of original software. no clue
 
@@ -197,6 +198,15 @@ fn cmdblock_identify(comm: &mut CommBulk) -> (u16) {
 
     //TODO return all identification results
     return (count);
+}
+
+fn cmdblock_read_doublet(comm: &mut CommBulk, pos: u32) {
+    let resp1 = cmd_read(comm, pos + 0x000000, 0x0100); // from data dump of original software. no clue
+    if resp1 == vec![0xff; 0x0100] {
+        println!("skip 2nd read");
+        return;
+    }
+    let resp2 = cmd_read(comm, pos + 0x000100, 0x0f00); // from data dump of original software. no clue
 }
 
 fn cmd_nmea_switch(comm: &mut CommBulk, _enable: bool) {
