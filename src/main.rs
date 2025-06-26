@@ -119,7 +119,8 @@ fn main() {
 
     // here: device reboots itself without returning an answer
 
-    cmdblock_identify(&mut comm);
+    let (id2_count) = cmdblock_identify(&mut comm);
+    //assert_eq!(id_count, id2_count); // TODO verify model, serial etc
 
     let payload = cmd_read(&mut comm, 0x1fff80, 0x0008); // from data dump of original software. no clue what is expected here // TODO force all FFs?
     assert!(
