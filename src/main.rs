@@ -103,13 +103,12 @@ fn main() {
     cmdblock_read_doublet(&mut comm, 0x033000);
     cmd_read(&mut comm, 0x033f80, 0x0080); // from data dump of original software. no clue
 
-    let blocks = 47;
+    let blocks = 48;
     for i in 0..blocks {
         println!("read block {i}");
         cmdblock_read_doublet(&mut comm, i * 0x001000 + 0x001000);
     }
 
-    cmdblock_read_doublet(&mut comm, 0x030000);
     cmd_read(&mut comm, 0x031000, 0x0100); // from data dump of original software. no clue
     cmd_read(&mut comm, 0x031f80, 0x0080); // from data dump of original software. no clue
 
