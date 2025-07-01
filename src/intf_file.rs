@@ -1,3 +1,5 @@
+extern crate chrono;
+use chrono::{DateTime, TimeZone, Utc};
 use std::fs::read_to_string;
 //use futures_lite::future::block_on;
 //use hex_literal::hex;    //use: hex!
@@ -122,7 +124,12 @@ impl Intf for IntfFile {
         let line2 = comment_line[(i0 + 3)..].to_string();
         let i1 = line2.find(")").unwrap();
         let time_us = line2[0..i1].parse::<u64>().unwrap();
-        println!("SIMULATOR: dummy time of us={}", time_us);
+        let dt = Utc.timestamp_micros(time_us.try_into().unwrap());
+        println!(
+            "SIMULATOR: dummy time: us={}, {}",
+            time_us,
+            dt.single().unwrap().to_rfc2822()
+        );
         return time_us;
     }
 }
