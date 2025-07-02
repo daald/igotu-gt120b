@@ -100,27 +100,12 @@ fn main() {
         assert_eq!(id_offset, offset);
     }
 
-    let mut offset = id_offset;
-    let mut r = cmdblock_read_doublet(&mut comm, offset);
-    loop {
-        offset += 0x1000;
-        r = cmdblock_read_doublet(&mut comm, offset);
-        if !r {
-            break;
-        }
-    }
-    cmd_read(&mut comm, offset + 0x000f80, 0x0080); // from data dump of original software. no clue
 
-    let blocks = 48;
-    for i in 0..blocks {
-        println!("read block {i}");
-        cmdblock_read_doublet(&mut comm, i * 0x001000 + 0x001000);
-    }
+    doublet_loop(&mut comm, id_offset, 0xffffff);
+    doublet_loop(&mut comm, 0x1000, id_offset);
 
-    cmd_read(&mut comm, 0x031000, 0x0100); // from data dump of original software. no clue
-    cmd_read(&mut comm, 0x031f80, 0x0080); // from data dump of original software. no clue
 
-    cmd_read(&mut comm, 0x031100, 0x0e80); // from data dump of original software. no clue
+
 
     cmd_delete_reboot(&mut comm);
 
@@ -155,6 +140,34 @@ fn main() {
     */
 
     println!("END");
+}
+
+fn doublet_loop(comm: &mut CommBulk, init_offset: u32, stop_offset: u32) {
+    dbg!(init_offset);
+    let mut offset = init_offset;
+
+    let mut r2 = 2;
+    loop {
+        let r = cmdblock_read_doublet(comm, offset);
+        r2 -= 1;
+        if r {
+            r2 = 2;
+        }
+        println!(":: r={r}  r2={r2}");
+        if r2 <= 0 {
+            break;
+        }
+        offset += 0x1000;
+        if offset >= stop_offset {
+            println!(":: stop-offset {stop_offset:06x} reached");
+            cmd_read(comm, offset + 0x000000, 0x0100);
+            cmd_read(comm, offset + 0x000f80, 0x0080);
+            cmd_read(comm, offset + 0x000100, 0x0e80);
+            break;
+        }
+    }
+    println!(":: loop end");
+    cmd_read(comm, offset + 0x000f80, 0x0080); // from data dump of original software. no clue
 }
 
 /*

@@ -75,7 +75,7 @@ impl IntfFile {
         }
         if out_line.line != to_device {
             panic!(
-                "SIMULATOR >#{}: Next cmd doesn't match:\nactual:   {:02X?}\nexpected: {:02X?}",
+                "SIMULATOR >#{}: Next cmd doesn't match:\ncode:   {:02X?}\nscript: {:02X?}",
                 out_line.line_num, to_device, out_line.line
             );
         }
