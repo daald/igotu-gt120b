@@ -32,7 +32,7 @@ impl CommBulk {
         pad_and_checksum(&mut to_device);
         println!("Simple cmd {to_device:02X?}");
 
-        let answer = self.intf.cmd_oneway_devicereset(to_device);
+        self.intf.cmd_oneway_devicereset(to_device);
     }
 
     pub fn is_real(&self) -> bool {

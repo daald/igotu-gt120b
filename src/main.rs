@@ -54,7 +54,7 @@ fn main() {
     // set line coding request - probably not needed
     //sync_send_control(handle, 0x21, 0x20 /* set line coding*/, 0, 0, "\x00\xc2\x01\x00\x00\x00\x08", 7, 2000 );
 
-    let (id_count) = cmdblock_identify(&mut comm);
+    let (id_count, id_offset) = cmdblock_identify(&mut comm);
 
     // ./decode-igotu-trace3+120b.py says ReadCommand(pos = 0x1fff80, size = 0x0008) but this is not calculatable with cpp code. I guess another impl from manufacturer
     // 3411	55.575353	host	3.8.1	USB	80	URB_BULK out	930b03001d0000000000000000000042	16		CountCommand
@@ -81,9 +81,9 @@ fn main() {
         // run "./cargo-run.sh --bestreplay" for a complete run of the replay file
 
         // same again? at least check that the two results are squal
-        let count2 = cmd_count(&mut comm);
-        println!("count: {count2}, {count2:04x}");
+        let (count2, offset2) = cmd_count(&mut comm);
         assert_eq!(id_count, count2);
+        assert_eq!(id_offset, offset2);
         let read_payload2 = cmd_read(&mut comm, 0x1fff80, 0x0008); // from data dump of original software. no clue what is expected here // TODO force all FFs?
         assert_eq!(id_read, read_payload2);
     }
@@ -95,13 +95,17 @@ fn main() {
     cmd_read(&mut comm, 0x000000, 0x00ea); // from data dump of original software. no clue why these offsets/sizes
 
     {
-        let count = cmd_count(&mut comm);
-        println!("count: {count}, {count:04x}");
+        let (count, offset) = cmd_count(&mut comm);
         assert_eq!(id_count, count);
+        assert_eq!(id_offset, offset);
     }
-    cmdblock_read_doublet(&mut comm, 0x031000);
-    cmdblock_read_doublet(&mut comm, 0x032000);
-    cmdblock_read_doublet(&mut comm, 0x033000);
+
+    let mut offset = id_offset;
+    cmdblock_read_doublet(&mut comm, offset);
+    offset += 0x1000;
+    cmdblock_read_doublet(&mut comm, offset);
+    offset += 0x1000;
+    cmdblock_read_doublet(&mut comm, offset);
     cmd_read(&mut comm, 0x033f80, 0x0080); // from data dump of original software. no clue
 
     let blocks = 48;
@@ -119,7 +123,7 @@ fn main() {
 
     // here: device reboots itself without returning an answer
 
-    let (id2_count) = cmdblock_identify(&mut comm);
+    let (id2_count, id2_offset) = cmdblock_identify(&mut comm);
     //assert_eq!(id_count, id2_count); // TODO verify model, serial etc
 
     let payload = cmd_read(&mut comm, 0x1fff80, 0x0008); // from data dump of original software. no clue what is expected here // TODO force all FFs?
@@ -181,7 +185,7 @@ enum Model {
 
 //==============================================================================
 
-fn cmdblock_identify(comm: &mut CommBulk) -> (u16) {
+fn cmdblock_identify(comm: &mut CommBulk) -> (u32, u32) {
     println!("In cmdblock_identify()");
 
     // NmeaSwitchCommand enable=1
@@ -195,11 +199,10 @@ fn cmdblock_identify(comm: &mut CommBulk) -> (u16) {
     cmd_identification(comm);
 
     // CountCommand
-    let count = cmd_count(comm);
-    println!("count: {count}");
+    let (count, offset) = cmd_count(comm);
 
     //TODO return all identification results
-    return (count);
+    return (count, offset);
 }
 
 fn cmdblock_read_doublet(comm: &mut CommBulk, pos: u32) {
@@ -293,20 +296,27 @@ fn cmd_identification(comm: &mut CommBulk) {
     */
 }
 
-fn cmd_count(comm: &mut CommBulk) -> u16 {
+fn calculate_offset_from_count(b: u8, c: u8) -> u32 {
+    let out_shifted = ((b as u32) << 3) + ((c as u32) >> 5) + 1;
+    out_shifted << 12
+}
+
+fn cmd_count(comm: &mut CommBulk) -> (u32, u32) {
     println!("Send cmd_count");
     let command: Vec<u8> = hex!["930b03001d"].to_vec();
 
     let answer = comm.simple_cmd_return(command);
 
-    if answer.len() != 3 || answer[0] != 0x00 {
+    if answer.len() != 3 {
         panic!("Unexpected answer: {answer:02x?}");
     }
 
-    let count = u16::from_be_bytes(answer[1..3].try_into().unwrap());
-    println!("count: {count}");
+    let offset = calculate_offset_from_count(answer[1], answer[2]);
+    let count = 0x1234; //TODO  u32::from_be_bytes(answer[0..3].try_into().unwrap());
 
-    return count;
+    println!("count/offset: {count}/{offset}, {count:06x}/{offset:06x}");
+
+    return (count, offset);
 
     /*
     CountCommand
