@@ -101,12 +101,15 @@ fn main() {
     }
 
     let mut offset = id_offset;
-    cmdblock_read_doublet(&mut comm, offset);
-    offset += 0x1000;
-    cmdblock_read_doublet(&mut comm, offset);
-    offset += 0x1000;
-    cmdblock_read_doublet(&mut comm, offset);
-    cmd_read(&mut comm, 0x033f80, 0x0080); // from data dump of original software. no clue
+    let mut r = cmdblock_read_doublet(&mut comm, offset);
+    loop {
+        offset += 0x1000;
+        r = cmdblock_read_doublet(&mut comm, offset);
+        if !r {
+            break;
+        }
+    }
+    cmd_read(&mut comm, offset + 0x000f80, 0x0080); // from data dump of original software. no clue
 
     let blocks = 48;
     for i in 0..blocks {
@@ -205,13 +208,14 @@ fn cmdblock_identify(comm: &mut CommBulk) -> (u32, u32) {
     return (count, offset);
 }
 
-fn cmdblock_read_doublet(comm: &mut CommBulk, pos: u32) {
-    let resp1 = cmd_read(comm, pos + 0x000000, 0x0100); // from data dump of original software. no clue
+fn cmdblock_read_doublet(comm: &mut CommBulk, pos: u32) -> bool {
+    let resp1 = cmd_read(comm, pos + 0x000000, 0x0100); // beginning. also used for probing
     if resp1 == vec![0xff; 0x0100] {
         println!("skip 2nd read");
-        return;
+        return false;
     }
-    let resp2 = cmd_read(comm, pos + 0x000100, 0x0f00); // from data dump of original software. no clue
+    let resp2 = cmd_read(comm, pos + 0x000100, 0x0f00); // rest
+    return true;
 }
 
 fn cmd_nmea_switch(comm: &mut CommBulk, _enable: bool) {
