@@ -18,7 +18,9 @@ impl CommBulk {
 
         let answer = self.intf.send_and_receive(to_device);
         //println!("  r={answer:02X?}");
-        return verify_answer_checksum_extract_payload(answer);
+        let payload = verify_answer_checksum_extract_payload(answer);
+        println!("Simple response {payload:02X?}");
+        return payload;
     }
 
     pub fn simple_cmd_eqresult(&mut self, to_device: Vec<u8>, expect_from_device: Vec<u8>) {
