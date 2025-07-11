@@ -73,7 +73,7 @@ fn main() {
     //> 93:09:20:cd:d6:3d:9e:36:06:00:da:24:3e:68:00:e6  or 93:09:b0:cd:7f:a0:39360600d28c37680056
     //< 93:00:00:6d
     } else {
-        // assumption: 8xff is some signal to send this setsomething command
+        // possibly this non-empty information is important. maybe a bad block list? fortunately or unfortunately, I've never seen this
         panic!("Unknown device state. needs more debugging");
     }
 
