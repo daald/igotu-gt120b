@@ -101,6 +101,7 @@ fn main() {
     }
 
     let mut end_offset = id_offset;
+    let mut all_begin_empty = true;
     {
         let mut r1 = false;
         let mut r0 = false;
@@ -110,6 +111,7 @@ fn main() {
             r0 = cmdblock_read_doublet(&mut comm, id_offset + i * 0x1000);
             if r0 {
                 end_offset = id_offset + i * 0x1000;
+                all_begin_empty = false;
             }
             i += 1;
         }
@@ -121,17 +123,17 @@ fn main() {
 
     println!("A2");
 
+    let mut offset = 0x1000;
     {
-        let mut offset = 0x1000;
         while offset < end_offset {
             cmdblock_read_doublet(&mut comm, offset);
             offset += 0x1000;
         }
+    }
+    println!("B {id_offset:06x} {end_offset:06x} {offset:06x}");
+    println!("B");
 
-        println!("B {id_offset:06x} {end_offset:06x}");
-        println!("B");
-
-        // TODO: warum manchmal und manchmal nicht?
+    if !all_begin_empty {
         cmd_read(&mut comm, offset + 0x000000, 0x0100);
         cmd_read(&mut comm, offset + 0x000f80, 0x0080);
         cmd_read(&mut comm, offset + 0x000100, 0x0e80);
