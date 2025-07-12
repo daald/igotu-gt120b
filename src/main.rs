@@ -100,12 +100,42 @@ fn main() {
         assert_eq!(id_offset, offset);
     }
 
+    let mut end_offset = id_offset;
+    {
+        let mut r1 = false;
+        let mut r0 = false;
+        let mut i = 0;
+        while i < 2 || r0 || r1 {
+            r1 = r0;
+            r0 = cmdblock_read_doublet(&mut comm, id_offset + i * 0x1000);
+            if r0 {
+                end_offset = id_offset + i * 0x1000;
+            }
+            i += 1;
+        }
 
-    doublet_loop(&mut comm, id_offset, 0xffffff);
-    doublet_loop(&mut comm, 0x1000, id_offset);
+        println!("A1");
 
+        cmd_read(&mut comm, id_offset + (i - 1) * 0x1000 + 0xf80, 0x080); // from data dump of original software. no clue
+    }
 
+    println!("A2");
 
+    {
+        let mut offset = 0x1000;
+        while offset < end_offset {
+            cmdblock_read_doublet(&mut comm, offset);
+            offset += 0x1000;
+        }
+
+        println!("B {id_offset:06x} {end_offset:06x}");
+        println!("B");
+
+        // TODO: warum manchmal und manchmal nicht?
+        cmd_read(&mut comm, offset + 0x000000, 0x0100);
+        cmd_read(&mut comm, offset + 0x000f80, 0x0080);
+        cmd_read(&mut comm, offset + 0x000100, 0x0e80);
+    }
 
     cmd_delete_reboot(&mut comm);
 
