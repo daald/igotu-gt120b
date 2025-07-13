@@ -1,5 +1,4 @@
 use crate::CommBulk;
-use crate::Model;
 use hex_literal::hex; //use: hex!
 
 pub fn cmd_nmea_switch(comm: &mut CommBulk, _enable: bool) {
@@ -18,6 +17,14 @@ pub fn cmd_nmea_switch(comm: &mut CommBulk, _enable: bool) {
     3400	55.554842	3.8.1	host	USB	64	URB_BULK out						0
     3401	55.555664	3.8.1	host	USB	68	URB_BULK in	9300006d				4
     */
+}
+
+#[derive(strum_macros::Display)]
+pub enum Model {
+    Gt100,
+    Gt200,
+    Gt120, // sadly, this is for both GT-120 and GT-120b
+    Gt200e,
 }
 
 pub fn cmd_model(comm: &mut CommBulk) -> Model {
