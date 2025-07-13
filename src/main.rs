@@ -96,26 +96,7 @@ fn main() {
         assert_eq!(id_offset, offset);
     }
 
-    let mut end_offset = id_offset;
-    let mut all_begin_empty = true;
-    {
-        let mut r1 = false;
-        let mut r0 = false;
-        let mut i = 0;
-        while i < 2 || r0 || r1 {
-            r1 = r0;
-            r0 = cmdblock_read_doublet(&mut comm, id_offset + i * 0x1000);
-            if r0 {
-                end_offset = id_offset + i * 0x1000;
-                all_begin_empty = false;
-            }
-            i += 1;
-        }
-
-        println!("A1");
-
-        cmd_read(&mut comm, id_offset + (i - 1) * 0x1000 + 0xf80, 0x080); // from data dump of original software. no clue
-    }
+    let (end_offset, all_begin_empty) = cmdblock_find_end_offset(&mut comm, id_offset);
 
     println!("A2");
 
@@ -143,8 +124,8 @@ fn main() {
 
     // here: device reboots itself without returning an answer
 
-    let (id2_count, id2_offset) = cmdblock_identify(&mut comm);
-    //assert_eq!(id_count, id2_count); // TODO verify model, serial etc
+    let (_id2_count, _id2_offset) = cmdblock_identify(&mut comm);
+    //assert_eq!(id_count, id2_count); // TODO verify model, serial etc. count WILL be different
 
     let payload = cmd_read(&mut comm, 0x1fff80, 0x0008); // from data dump of original software. no clue what is expected here // TODO force all FFs?
     assert!(
@@ -155,51 +136,31 @@ fn main() {
     let time_us = comm.get_time_micros();
     cmd_set_time(&mut comm, time_us); //  1753997893134000u64
 
-    /*
-    {
-        let blocks = 1 + (count + 0x7f) / 0x80;
-
-        println!("Number of points: {count}");
-
-        let blocks = 1 + (count as u32 + 0x7f) / 0x80;
-
-        println!("blocks: {blocks}");
-        for i in 0..blocks {
-            println!("read block {i}");
-            cmd_read(&mut comm, i * 0x1000, 0x1000);
-        }
-    }
-    */
-
     println!("END");
 }
 
-fn doublet_loop(comm: &mut CommBulk, init_offset: u32, stop_offset: u32) {
-    dbg!(init_offset);
-    let mut offset = init_offset;
+fn cmdblock_find_end_offset(comm: &mut CommBulk, id_offset: u32) -> (u32, bool) {
+    let mut end_offset = id_offset;
+    let mut all_begin_empty = true;
+    {
+        let mut r1 = false;
+        let mut r0 = false;
+        let mut i = 0;
+        while i < 2 || r0 || r1 {
+            r1 = r0;
+            r0 = cmdblock_read_doublet(comm, id_offset + i * 0x1000);
+            if r0 {
+                end_offset = id_offset + i * 0x1000;
+                all_begin_empty = false;
+            }
+            i += 1;
+        }
 
-    let mut r2 = 2;
-    loop {
-        let r = cmdblock_read_doublet(comm, offset);
-        r2 -= 1;
-        if r {
-            r2 = 2;
-        }
-        println!(":: r={r}  r2={r2}");
-        if r2 <= 0 {
-            break;
-        }
-        offset += 0x1000;
-        if offset >= stop_offset {
-            println!(":: stop-offset {stop_offset:06x} reached");
-            cmd_read(comm, offset + 0x000000, 0x0100);
-            cmd_read(comm, offset + 0x000f80, 0x0080);
-            cmd_read(comm, offset + 0x000100, 0x0e80);
-            break;
-        }
+        println!("A1");
+
+        cmd_read(comm, id_offset + (i - 1) * 0x1000 + 0xf80, 0x080); // from data dump of original software. no clue
     }
-    println!(":: loop end");
-    cmd_read(comm, offset + 0x000f80, 0x0080); // from data dump of original software. no clue
+    return (end_offset, all_begin_empty);
 }
 
 /*

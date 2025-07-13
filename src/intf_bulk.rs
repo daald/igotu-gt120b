@@ -1,7 +1,7 @@
 use futures_lite::future::block_on;
 use nusb::transfer::{ControlOut, ControlType, Queue, Recipient, RequestBuffer};
 use nusb::{Device, Interface};
-use std::time::{Duration, SystemTime};
+use std::time::SystemTime;
 //use hex_literal::hex;    //use: hex!
 
 use crate::intf;
