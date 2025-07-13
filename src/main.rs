@@ -88,10 +88,6 @@ fn main() {
         assert_eq!(id_read, read_payload2);
     }
 
-    if comm.is_real() {
-        panic!("safety stop");
-    }
-
     cmd_read(&mut comm, 0x000000, 0x00ea); // from data dump of original software. no clue why these offsets/sizes
 
     {
@@ -137,6 +133,10 @@ fn main() {
         cmd_read(&mut comm, offset + 0x000000, 0x0100);
         cmd_read(&mut comm, offset + 0x000f80, 0x0080);
         cmd_read(&mut comm, offset + 0x000100, 0x0e80);
+    }
+
+    if comm.is_real() {
+        panic!("safety stop");
     }
 
     cmd_delete_reboot(&mut comm);
