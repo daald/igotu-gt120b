@@ -1,0 +1,72 @@
+structure knowledge from: igotupoints.cpp (120a)
+
+
+00	flags
+		0x20==0==valid
+		0x04==1==isWayPoint
+		0x40==1==isTrackStart
+01..03	date
+04..05	sec
+06..07	ehpe		return 1e-2 * 0x10 * (qFromBigEndian<quint16>            (reinterpret_cast<const uchar*>(record.data()) + 0x06) & 0x0fff);
+08..0b	satellites	unsigned bitmap = qFromBigEndian<quint32>	        (reinterpret_cast<const uchar*>(record.data()) + 0x08);
+0c..0f	latitude	return 1e-7 * qFromBigEndian<qint32>        (reinterpret_cast<const uchar*>(record.data()) + 0x0c);
+10..13	longitude	return 1e-7 * qFromBigEndian<qint32>        (reinterpret_cast<const uchar*>(record.data()) + 0x10);
+14..17	elevation	return 1e-2 * qFromBigEndian<qint32>        (reinterpret_cast<const uchar*>(record.data()) + 0x14);
+18..19	speed		return 1e-2 * 3.6 * qFromBigEndian<quint16>	(reinterpret_cast<const uchar*>(record.data()) + 0x18);
+1a..1b	course		return 1e-2 * qFromBigEndian<quint16>        (reinterpret_cast<const uchar*>(record.data()) + 0x1a);
+1c	timeout
+1d	msvsQcn
+1e	weightCriteria
+1f	sleepTime
+
+
+
+QDateTime IgotuPoint::dateTime() const
+{
+    const unsigned date = qFromBigEndian<quint32>
+        (reinterpret_cast<const uchar*>(record.data())) & 0x00ffffff;
+    const unsigned sec = qFromBigEndian<quint16>
+        (reinterpret_cast<const uchar*>(record.data()) + 4);
+
+    return QDateTime(
+        QDate(
+          ((QDate::currentDate().year() + 4 - ((date >> 20) & 0xf)) & 0xfff0) + ((date >> 20) & 0xf),
+          (date >> 16) & 0xf,
+          (date >> 11) & 0x1f),
+        QTime((date >> 6) & 0x1f, date & 0x3f, sec / 1000, sec % 1000),
+        Qt::UTC);
+}
+
+
+
+
+datablock example from 2025-07-31:
+
+1  2  3  4  5  6  7  8  9  0  1  2  3  4  5  6  7  8  9  0  1  2  3  4  5  6  7  8  9  0  1  2
+#: read (size=0100, pos=001000)
+
+0c:00:41:02:98:44:03:cc
+41:d0:19:07:fc:46:74:e8:00:00:0c:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00
+43:d4:19:07:fc:47:33:51:00:00:52:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:01:00:5b:1d
+00:d5:19:07:fc:48:00:00:0e:00:7d:3b:00:00:a2:a5:3c:1c:6c:83:15:05:08:c0:00:00:5a:00:49:1d
+43:d0:19:07:fc:48:7b:32:00:00:0c:00:00:19:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00
+
+0c:00:41:02:0f:e9:2a:cc
+43:d6:19:07:fc:48:68:42:0e:00:0f:15:00:19:40:a3:3c:1c:88:7b:15:05:da:c0:00:00:15:00:76:23
+00:d8:19:07:fc:48:68:bf:0e:00:11:39:00:19:34:a5:3c:1c:28:81:15:05:18:bf:00:00:0f:00:66:6b
+00:d9:19:07:fc:49:20:4e:0e:00:11:39:00:19:34:a5:3c:1c:c2:82:15:05:3a:c0:00:00:13:00:a9:63
+42:d9:19:07:fc:49:20:4e:0e:00:11:39:00:19:34:a5:3c:1c:c2:82:15:05:3a:c0:00:00:13:00:a9:63
+
+#: read (size=0f00, pos=001100)
+
+0c:00:41:02:6e:31:e3:e0
+41:a0:19:07:fd:05:f4:15:00:00:0c:00:00:19:00:00:00:00:00:00:00:00:3a:c0:00:00:00:00:00:00
+43:a6:19:07:fd:07:6e:02:00:00:ac:00:00:19:00:00:00:00:00:00:00:00:3a:c0:00:00:01:00:67:09
+00:a4:19:07:fd:07:b8:88:29:00:cf:35:00:19:b2:96:3b:1c:44:53:18:05:6a:b3:00:00:4e:00:95:24
+00:a4:19:07:fd:07:10:a4:29:00:0d:42:00:07:bc:96:3b:1c:c4:55:18:05:02:b2:00:00:45:00:58:21
+
+0c:00:41:02:5a:1c:39:e1
+43:a0:19:07:fd:07:71:e0:00:00:0c:00:00:19:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00
+00:a4:19:07:fd:08:99:ad:2a:00:2b:35:00:19:2c:95:3b:1c:cc:61:18:05:c2:ab:00:00:73:00:cd:1e
+42:a6:19:07:fd:08:69:b5:2a:00:00:00:00:00:2c:95:3b:1c:ce:55:18:05:b6:a3:00:00:19:00:c0:0f
+ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff
