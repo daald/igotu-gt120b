@@ -17,3 +17,7 @@ chrono = "0.4.41"
 
 #[[bin]]
 #name = "main"
+
+[[bin]]
+name = "data"
+path = "doc/topics/dataformat-parsing/data.rs"
