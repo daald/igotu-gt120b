@@ -27,6 +27,9 @@ struct Args {
     #[arg(short, long, default_value_t = false)]
     bestreplay: bool,
 
+    //let replay_file = "src/replay-120b.txt";
+    //let replay_file = "src/gt-120b-kvm-sesson-20250529.json.txt";
+    //let replay_file = "src/gt-120b-kvm-sesson-20250603.json.txt";
     /// Filename of simulation replay file
     #[arg(short, long)]
     sim_file_name: String,

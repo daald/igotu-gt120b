@@ -19,5 +19,11 @@ chrono = "0.4.41"
 #name = "main"
 
 [[bin]]
-name = "data"
-path = "doc/topics/dataformat-parsing/data.rs"
+name = "data2"
+path = "doc/topics/dataformat-parsing/data2.rs"
+[[bin]]
+name = "data3"
+path = "doc/topics/dataformat-parsing/data3.rs"
+[[bin]]
+name = "data3b"
+path = "doc/topics/dataformat-parsing/data3b.rs"
