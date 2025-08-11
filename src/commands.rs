@@ -19,7 +19,7 @@ pub fn cmd_nmea_switch(comm: &mut CommBulk, _enable: bool) {
     */
 }
 
-#[derive(strum_macros::Display)]
+#[derive(strum_macros::Display, Debug, PartialEq)]
 pub enum Model {
     Gt100,
     Gt200,
@@ -65,6 +65,7 @@ pub fn cmd_identification(comm: &mut CommBulk) {
         panic!("Unexpected answer: {answer:02x?}");
     }
 
+    // TODO a lot to extract from this response
     let id = u32::from_be_bytes(answer[0..4].try_into().unwrap()); // was little endian in commands.cpp
     let version = u16::from_be_bytes(answer[4..6].try_into().unwrap());
     // this is far away from perfect!
@@ -96,7 +97,7 @@ fn calculate_offset_from_count(b: u8, c: u8) -> u32 {
     out_shifted << 12
 }
 
-pub fn cmd_count(comm: &mut CommBulk) -> (u32, u32) {
+pub fn cmd_count(comm: &mut CommBulk) -> u32 {
     println!("Send cmd_count");
     let command: Vec<u8> = hex!["930b03001d"].to_vec();
 
@@ -107,11 +108,10 @@ pub fn cmd_count(comm: &mut CommBulk) -> (u32, u32) {
     }
 
     let offset = calculate_offset_from_count(answer[1], answer[2]);
-    let count = 0x1234; //TODO  u32::from_be_bytes(answer[0..3].try_into().unwrap());
 
-    println!("count/offset: {count}/{offset}, {count:06x}/{offset:06x}");
+    println!("count/offset: {offset}, {offset:06x}");
 
-    return (count, offset);
+    return offset;
 
     /*
     CountCommand
