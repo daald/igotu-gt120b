@@ -64,6 +64,7 @@ pub fn workflow(comm: &mut CommBulk, bestreplay: bool) {
     println!("B");
 
     if !all_begin_empty {
+        //TODO check result? do more/less reads depending on result? Right now, all recorded sessions work without understanding the result
         cmd_read(comm, offset + 0x000000, 0x0100);
         cmd_read(comm, offset + 0x000f80, 0x0080);
         cmd_read(comm, offset + 0x000100, 0x0e80);

@@ -41,7 +41,7 @@ pub fn cmd_model(comm: &mut CommBulk) -> Model {
     3405	55.569261	3.8.1	host	USB	71	URB_BULK in	930003c2201573				7
     */
 
-    if answer[0] != 0xc2 || answer[1] != 0x20 || answer.len() != 3 {
+    if answer.len() != 3 || answer[0] != 0xc2 || answer[1] != 0x20 {
         panic!("Unexpected answer: {answer:02x?}");
     }
 
