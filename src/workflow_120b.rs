@@ -54,11 +54,9 @@ pub fn workflow(comm: &mut CommBulk, bestreplay: bool) {
     println!("A2");
 
     let mut offset = 0x1000;
-    {
-        while offset < end_offset {
-            cmdblock_read_doublet(comm, offset);
-            offset += 0x1000;
-        }
+    while offset < end_offset {
+        cmdblock_read_doublet(comm, offset);
+        offset += 0x1000;
     }
     println!("B {id_offset:06x} {end_offset:06x} {offset:06x}");
     println!("B");
