@@ -3,6 +3,7 @@ use crate::commands::{
     Model, cmd_count, cmd_delete_reboot, cmd_identification, cmd_model, cmd_nmea_switch, cmd_read,
     cmd_set_time,
 };
+use crate::gt120b_datadump::Gt120bDataDump;
 
 pub fn workflow(comm: &mut CommBulk, bestreplay: bool) {
     // set line coding request - probably not needed
@@ -53,9 +54,11 @@ pub fn workflow(comm: &mut CommBulk, bestreplay: bool) {
 
     println!("A2");
 
+    let datadumper = Gt120bDataDump {};
+    let datadumper_ref = Some(&datadumper);
     let mut offset = 0x1000;
     while offset < end_offset {
-        cmdblock_read_doublet(comm, offset);
+        cmdblock_read_doublet(comm, offset, datadumper_ref);
         offset += 0x1000;
     }
     println!("B {id_offset:06x} {end_offset:06x} {offset:06x}");
@@ -63,9 +66,12 @@ pub fn workflow(comm: &mut CommBulk, bestreplay: bool) {
 
     if !all_begin_empty {
         //TODO check result? do more/less reads depending on result? Right now, all recorded sessions work without understanding the result
-        cmd_read(comm, offset + 0x000000, 0x0100);
-        cmd_read(comm, offset + 0x000f80, 0x0080);
-        cmd_read(comm, offset + 0x000100, 0x0e80);
+        let resp = cmd_read(comm, offset + 0x000000, 0x0100);
+        datadumper.process_datablock(resp);
+        let resp = cmd_read(comm, offset + 0x000f80, 0x0080);
+        datadumper.process_datablock(resp);
+        let resp = cmd_read(comm, offset + 0x000100, 0x0e80);
+        datadumper.process_datablock(resp);
     }
 
     if comm.is_real() {
@@ -99,7 +105,7 @@ fn cmdblock_find_end_offset(comm: &mut CommBulk, id_offset: u32) -> (u32, bool) 
         let mut i = 0;
         while i < 2 || r0 || r1 {
             r1 = r0;
-            r0 = cmdblock_read_doublet(comm, id_offset + i * 0x1000);
+            r0 = cmdblock_read_doublet(comm, id_offset + i * 0x1000, None); // TODO maybe also datadump here. we don't want to lose anything, be I also know we read these blocks multiple times
             if r0 {
                 end_offset = id_offset + i * 0x1000;
                 all_begin_empty = false;
@@ -135,12 +141,25 @@ fn cmdblock_identify(comm: &mut CommBulk) -> (Model, u32) {
     return (model, offset);
 }
 
-fn cmdblock_read_doublet(comm: &mut CommBulk, pos: u32) -> bool {
+/*
+ * Seen in original software: Read 0x100 bytes first, and then more if they were not all == 0xFF
+ */
+fn cmdblock_read_doublet(
+    comm: &mut CommBulk,
+    pos: u32,
+    datadumper_ref: Option<&Gt120bDataDump>,
+) -> bool {
     let resp1 = cmd_read(comm, pos + 0x000000, 0x0100); // beginning. also used for probing
     if resp1 == vec![0xff; 0x0100] {
-        println!("skip 2nd read");
+        println!("empty block. skip 2nd read");
         return false;
     }
-    let _resp2 = cmd_read(comm, pos + 0x000100, 0x0f00); // rest
+    if datadumper_ref.is_some() {
+        datadumper_ref.unwrap().process_datablock(resp1);
+    }
+    let resp2 = cmd_read(comm, pos + 0x000100, 0x0f00); // rest
+    if datadumper_ref.is_some() {
+        datadumper_ref.unwrap().process_datablock(resp2);
+    }
     return true;
 }

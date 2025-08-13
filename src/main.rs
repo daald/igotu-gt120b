@@ -1,5 +1,6 @@
 mod comm_bulk;
 mod commands;
+mod gt120b_datadump;
 mod intf;
 mod intf_bulk;
 mod intf_file;
