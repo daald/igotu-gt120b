@@ -110,7 +110,7 @@ fn dumpblock_parse_one(value: Vec<u8>) {
     let hour = (ymd >> 6 & 0x1f) as u8;
     let day = (ymd >> 11 & 0x1f) as u8;
     let mon = (ymd >> 16 & 0xf) as u8;
-    let year = value[2] as u16 + 2000;
+    let year = 2000 + value[2] as u16;
 
     // ymd_opt is deprecated, but the recommended with_ymd_and_hms doesn't suppport millis
     let time = Utc
