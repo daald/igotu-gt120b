@@ -54,7 +54,7 @@ pub fn workflow(comm: &mut CommBulk, bestreplay: bool) {
 
     println!("A2");
 
-    let datadumper = Gt120bDataDump {};
+    let mut datadumper = Gt120bDataDump::new();
     let datadumper_ref = Some(&datadumper);
     let mut offset = 0x1000;
     while offset < end_offset {
@@ -65,7 +65,7 @@ pub fn workflow(comm: &mut CommBulk, bestreplay: bool) {
     println!("B");
 
     if !all_begin_empty {
-        //TODO check result? do more/less reads depending on result? Right now, all recorded sessions work without understanding the result
+        // result is important in some usecases
         let resp = cmd_read(comm, offset + 0x000000, 0x0100);
         datadumper.process_datablock(resp);
         let resp = cmd_read(comm, offset + 0x000f80, 0x0080);

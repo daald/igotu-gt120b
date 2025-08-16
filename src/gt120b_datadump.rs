@@ -1,9 +1,26 @@
-use chrono::TimeZone;
-use chrono::Utc;
+use chrono::{DateTime, TimeZone, Utc};
+
+enum DatablockEnum {
+    Datablock {
+        time: DateTime<Utc>,
+        sat_used: u8,
+        sat_visib: u8,
+        course: f32,
+        speed: f32,
+        hdop: f32,
+        ele: f32,
+        lat: f32,
+        lon: f32,
+    },
+    PrevMod(DateTime<Utc>, u8),
+    NextMod(DateTime<Utc>, u8),
+    NoBlock,
+}
 
 pub struct Gt120bDataDump {
     //device: Device,
     //interface: Interface,
+    waypoints: Vec<DatablockEnum>,
 }
 
 /*
@@ -44,28 +61,36 @@ impl Intf for IntfBulk {
 */
 
 impl Gt120bDataDump {
-    pub fn process_datablock(&self, data: Vec<u8>) {
+    pub fn new() -> Self {
+        Gt120bDataDump {
+            waypoints: Vec::new(),
+        }
+    }
+
+    pub fn process_datablock(&mut self, data: Vec<u8>) {
         let structsize = 8 + 4 * 30;
         assert_eq!(0, data.len() % structsize);
-        dumpblock_hex(data);
+        self.dumpblock_hex(data);
         //       dumpblock_parse(data);
     }
-}
 
-fn dumpblock_hex(data: Vec<u8>) {
-    // TODO print offset for verbosity
-    let mut pos = 0;
-    while pos < data.len() {
-        println!("Received data: {:02X?}", &data[pos..(pos + 8)]);
-        pos += 8;
-        for _n in 0..4 {
-            println!("Received data: {:02X?}", &data[pos..(pos + 30)]);
-            dumpblock_parse_one(data[pos..(pos + 30)].to_vec());
-            pos += 30;
+    pub fn close() {}
+
+    fn dumpblock_hex(&mut self, data: Vec<u8>) {
+        // TODO print offset for verbosity
+        let mut pos = 0;
+        while pos < data.len() {
+            println!("Received data: {:02X?}", &data[pos..(pos + 8)]);
+            pos += 8;
+            for _n in 0..4 {
+                println!("Received data: {:02X?}", &data[pos..(pos + 30)]);
+                self.waypoints
+                    .push(dumpblock_parse_one(data[pos..(pos + 30)].to_vec()));
+                pos += 30;
+            }
         }
     }
 }
-
 fn dumpblock_parse(data: Vec<u8>) {
     // TODO print offset for verbosity
     let mut pos = 0;
@@ -78,32 +103,16 @@ fn dumpblock_parse(data: Vec<u8>) {
     }
 }
 
-fn dumpblock_parse_one(value: Vec<u8>) {
+fn dumpblock_parse_one(value: Vec<u8>) -> DatablockEnum {
     if value[0] == 0xff {
         println!("  (empty data)");
-        return;
+        return DatablockEnum::NoBlock;
     }
     if value[0] == 0x50 {
         println!("  (no coordinates)");
-        return;
-    }
-    if value[0] == 0x41 {
-        println!("  (? new track, no data)");
-        return;
-    }
-    if value[0] == 0x43 {
-        println!(
-            "  (? button pressed, note in next waypoint, this record doesn't contain coordinates)"
-        );
-        return;
-    }
-    if value[0] == 0x42 {
-        println!("  (switch-off. not to gpx)");
-        return; // we could dump this
+        return DatablockEnum::NoBlock;
     }
 
-    let sat_used = value[1] & 0x0f;
-    let sat_visib = (value[1] & 0xf0) >> 4;
     let ymd = u32::from_be_bytes(value[2..6].try_into().unwrap());
     let secs = u16::from_le_bytes(value[6..8].try_into().unwrap());
     let mins = (ymd & 0x3f) as u8;
@@ -124,6 +133,23 @@ fn dumpblock_parse_one(value: Vec<u8>) {
         )
         .unwrap();
 
+    if value[0] == 0x41 {
+        println!("  (? new track, no data) WpFlags of following + 0x01");
+        return DatablockEnum::NextMod(time, 0x01);
+    }
+    if value[0] == 0x42 {
+        println!("  (switch-off. not to gpx) WpFlags of previous + 0x02");
+        return DatablockEnum::PrevMod(time, 0x02); // we could dump this. but orig sw ignores this coords and only takes the flag
+    }
+    if value[0] == 0x43 {
+        println!(
+            "  (? button pressed, note in next waypoint, this record doesn't contain coordinates) WpFlags of following + 0x10"
+        );
+        return DatablockEnum::NextMod(time, 0x10);
+    }
+
+    let sat_used = value[1] & 0x0f;
+    let sat_visib = (value[1] & 0xf0) >> 4;
     let course = u16::from_le_bytes(value[28..30].try_into().unwrap()) as f32 / 100.0;
     let speed = u16::from_le_bytes(value[26..28].try_into().unwrap()) as f32 / 100.0;
     let hdop = value[8] as f32 / 10.0;
@@ -150,4 +176,15 @@ fn dumpblock_parse_one(value: Vec<u8>) {
       </trkpt>
 "
     );
+    DatablockEnum::Datablock {
+        sat_used: sat_used,
+        sat_visib: sat_visib,
+        time: time,
+        course: course,
+        speed: speed,
+        hdop: hdop,
+        ele: ele,
+        lat: lat,
+        lon: lon,
+    }
 }
