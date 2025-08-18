@@ -49,12 +49,43 @@ pub fn cmd_identification(comm: &mut CommBulk) {
     }
 
     // TODO a lot to extract from this response
-    let id = u32::from_be_bytes(answer[0..4].try_into().unwrap()); // was little endian in commands.cpp
-    let version = u16::from_be_bytes(answer[4..6].try_into().unwrap());
+    let serial = u32::from_le_bytes(answer[0..4].try_into().unwrap()); // was little endian in commands.cpp
+    let version1 = answer[4];
+    let version2 = answer[5];
+    let version3 = u16::from_be_bytes(answer[4..6].try_into().unwrap());
+    let name2 = format!("{:02X}{:02X}", answer[11], answer[10]);
+    let version = format!("{version1}.{version2}.");
     // this is far away from perfect!
-    let deviceid = u16::from_be_bytes(answer[6..8].try_into().unwrap()).to_string(); //+ "-" + hex::encode(answer[10..16]); // todo: leading zeroes and reverse order of bytes
+    let model = u16::from_be_bytes(answer[6..8].try_into().unwrap()); //+ "-" + hex::encode(answer[10..16]); // todo: leading zeroes and reverse order of bytes
+    let devid2 = u64::from_le_bytes(answer[8..16].try_into().unwrap()) >> 16 & 0xffffffffffff;
+    let serialnumber = 10000000000u64 * model as u64 + serial as u64;
+    let deviceid = format!("{model:04}-{devid2:012X}");
 
-    println!("id: {id}  version: {version}  deviceid: {deviceid}")
+    println!(
+        "
+identification:
+  serial:   {serial}
+  serialnumber: {serialnumber}
+  version:  {version}
+  deviceid: {deviceid}
+  name2:    {name2}
+  model:    {model}
+"
+    );
+    println!(
+        "{{
+      \"Manufacturer\": \"\",
+      \"Model\": {model},
+      \"DeviceID\": \"{deviceid}\",
+      \"Name\": \"GT120B-{name2}\",
+      \"Alias\": \"GT120B-{name2}\",
+      \"SerialNumber\": \"{serialnumber}\",
+      \"HWVersion\": \"\",
+      \"FWVersion\": \"{version}\",
+      \"SWVersion\": \"not installed\",
+      \"Description\": \"\"
+    }}"
+    );
 
     /*
     IdentificationCommand
