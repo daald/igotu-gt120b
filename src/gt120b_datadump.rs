@@ -128,7 +128,7 @@ fn dumpblock_parse_one(value: Vec<u8>) -> DatablockEnum {
         .and_hms_milli_opt(
             hour as u32,
             mins as u32,
-            secs as u32 / 1000,
+            (secs / 1000) as u32,
             (secs % 1000) as u32,
         )
         .unwrap();
