@@ -44,6 +44,7 @@ pub fn workflow(comm: &mut CommBulk, bestreplay: bool) {
     }
 
     cmd_read(comm, 0x000000, 0x00ea); // from data dump of original software. no clue why these offsets/sizes
+// TODO read customizable devicename from here.  10:0e:02:00:19:00:38:00:07:00:00:02:00:00:00:00:47:54:31:32:30:42:2d:30:44:36:36:00:00:00:00
 
     {
         let offset = cmd_count(comm);

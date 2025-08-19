@@ -74,7 +74,10 @@ impl Gt120bDataDump {
         //       dumpblock_parse(data);
     }
 
-    pub fn close() {}
+    pub fn close() {
+        //TODO apply flags
+        //TODO print out everything
+    }
 
     fn dumpblock_hex(&mut self, data: Vec<u8>) {
         // TODO print offset for verbosity
