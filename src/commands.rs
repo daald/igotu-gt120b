@@ -52,9 +52,14 @@ pub fn cmd_identification(comm: &mut CommBulk) {
     let serial = u32::from_le_bytes(answer[0..4].try_into().unwrap()); // was little endian in commands.cpp
     let version1 = answer[4];
     let version2 = answer[5];
-    let version3 = u16::from_be_bytes(answer[4..6].try_into().unwrap());
+    let version3 = u16::from_le_bytes(answer[8..10].try_into().unwrap());
+
+    let version3d = version3 & 0x1f;
+    let version3m = version3 >> 5 & 0xf;
+    let version3y = version3 >> 9 & 0xff;
+
     let name2 = format!("{:02X}{:02X}", answer[11], answer[10]);
-    let version = format!("{version1}.{version2}.");
+    let version = format!("{version1}.{version2}.{version3y:02}{version3m:02}{version3d:02}");
     // this is far away from perfect!
     let model = u16::from_be_bytes(answer[6..8].try_into().unwrap()); //+ "-" + hex::encode(answer[10..16]); // todo: leading zeroes and reverse order of bytes
     let devid2 = u64::from_le_bytes(answer[8..16].try_into().unwrap()) >> 16 & 0xffffffffffff;
@@ -107,7 +112,7 @@ identification:
     // expected: [93, 00, 11, A6, 23, 63, 0D, 01, 02, 00, 0A, 2B, 2E, 66, 0D, 71, 8C, 18, 00, 02, 33]
     //                                                        ^^  ^^                              ^^
     //                        |id----------|  |ver-|          ^ firmware?   66 0D could be device name GT120B-0D66  device id 0010-00188C710D66
-    // firmware 1.2.220218 or 1.2.230111
+    // firmware 1.2.220218 or 1.2.230111 or 1.2.231013
     */
 
     /*
