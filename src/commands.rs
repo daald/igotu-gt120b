@@ -61,6 +61,11 @@ pub fn cmd_identification(comm: &mut CommBulk) {
     let serialnumber = 10000000000u64 * model as u64 + serial as u64;
     let deviceid = format!("{model:04}-{devid2:012X}");
 
+    let modelname = match model {
+        10 => "GT120B",
+        _ => panic!("Unknown model code: {model}"),
+    };
+
     println!(
         "
 identification:
@@ -77,8 +82,8 @@ identification:
       \"Manufacturer\": \"\",
       \"Model\": {model},
       \"DeviceID\": \"{deviceid}\",
-      \"Name\": \"GT120B-{name2}\",
-      \"Alias\": \"GT120B-{name2}\",
+      \"Name\": \"{modelname}-{name2}\",
+      \"Alias\": \"{modelname}-{name2}\",
       \"SerialNumber\": \"{serialnumber}\",
       \"HWVersion\": \"\",
       \"FWVersion\": \"{version}\",
@@ -103,6 +108,12 @@ identification:
     //                                                        ^^  ^^                              ^^
     //                        |id----------|  |ver-|          ^ firmware?   66 0D could be device name GT120B-0D66  device id 0010-00188C710D66
     // firmware 1.2.220218 or 1.2.230111
+    */
+
+    /*
+    examples
+    #: identification                        > 93:0a:00:00:00:00:00:00:00:00:00:00:00:00:00:63 < 93:00:11:a6:23:63:0d:01:02:00:0a:2b:2e:66:0d:71:8c:18:00:02:33
+    #: identification                        > 93:0a:00:00:00:00:00:00:00:00:00:00:00:00:00:63 < 93:00:11:a6:23:63:0d:01:02:00:0a:4d:2f:66:0d:71:8c:18:00:02:10
     */
 }
 
