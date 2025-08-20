@@ -105,43 +105,6 @@ pub struct Gt120bDataDump {
     waypoints: Vec<DatablockEnum>,
 }
 
-/*
-impl Intf for IntfBulk {
-    fn send_and_receive(&mut self, to_device: Vec<u8>) -> Vec<u8> {
-        let queue = self.interface.bulk_in_queue(BULK_EP_IN);
-
-        block_on(self.interface.bulk_out(BULK_EP_OUT, to_device))
-            .into_result()
-            .unwrap();
-
-        println!("  awaiting answer");
-        let answer = self.read_answer(queue);
-        // TODO close queue
-        return answer;
-    }
-
-    fn cmd_oneway_devicereset(&mut self, to_device: Vec<u8>) {
-        block_on(self.interface.bulk_out(BULK_EP_OUT, to_device))
-            .into_result()
-            .unwrap();
-
-        println!("  TODO: wait for device reset");
-    }
-
-    fn is_real(&self) -> bool {
-        return true;
-    }
-
-    fn get_time_micros(&self) -> u64 {
-        let duration_since_epoch = SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap();
-        let timestamp_micros = duration_since_epoch.as_micros();
-        return timestamp_micros as u64;
-    }
-}
-*/
-
 impl Gt120bDataDump {
     pub fn new() -> Self {
         Gt120bDataDump {
@@ -161,6 +124,7 @@ impl Gt120bDataDump {
         //TODO print out everything
     }
     pub fn write_out(&mut self) {
+        //TODO sort
         let mut next_flags = 0u8;
         for wp in self.waypoints.iter_mut().rev() {
             match wp {
