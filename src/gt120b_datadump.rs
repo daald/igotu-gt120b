@@ -22,20 +22,19 @@ impl DatablockEnum {
     pub fn dump(&self) {
         match self {
             DatablockEnum::Datablock {
-                time: time,
-                wpflags: wpflags,
-                sat_used: sat_used,
-                sat_visib: sat_visib,
-                course: course,
-                speed: speed,
-                hdop: hdop,
-                ele: ele,
-                lat: lat,
-                lon: lon,
+                time,
+                wpflags,
+                sat_used,
+                sat_visib,
+                course,
+                speed,
+                hdop,
+                ele,
+                lat,
+                lon,
             } => {
                 println!(
-                    "
-      <trkpt lat=\"{lat}\" lon=\"{lon}\">
+                    "      <trkpt lat=\"{lat}\" lon=\"{lon}\">
         <ele>{ele}</ele>
         <time>{time}</time>{}
         <sat>{sat_used}</sat>
@@ -49,8 +48,7 @@ impl DatablockEnum {
             <mat:sat_view>{sat_visib}</mat:sat_view>
           </mat:TrackPointExtension>
         </extensions>
-      </trkpt>
-",
+      </trkpt>",
                     if *wpflags != 0 {
                         format!("\n        <type>WpFlag:{wpflags}</type>")
                     } else {
@@ -65,7 +63,7 @@ impl DatablockEnum {
     pub fn is_eof(&self) -> bool {
         match self {
             DatablockEnum::Datablock {
-                wpflags: wpflags,
+                wpflags,
                 time: _,
                 sat_used: _,
                 sat_visib: _,
@@ -136,7 +134,7 @@ impl Gt120bDataDump {
                     next_flags = 0;
                 }
                 DatablockEnum::Datablock {
-                    wpflags: wpflags,
+                    wpflags,
                     time: _,
                     sat_used: _,
                     sat_visib: _,
@@ -163,7 +161,7 @@ impl Gt120bDataDump {
                     next_flags = 0;
                 }
                 DatablockEnum::Datablock {
-                    wpflags: wpflags,
+                    wpflags,
                     time: _,
                     sat_used: _,
                     sat_visib: _,
@@ -191,8 +189,7 @@ impl Gt120bDataDump {
     <desc>//TODO</desc>
   </metadata>
   <trk>
-    <trkseg>
-");
+    <trkseg>");
                 started = true;
             }
             wp.dump();
