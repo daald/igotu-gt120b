@@ -95,6 +95,25 @@ impl DatablockEnum {
             _ => false,
         }
     }
+    pub fn time(&self) -> DateTime<Utc> {
+        match self {
+            DatablockEnum::Datablock {
+                time,
+                wpflags: _,
+                sat_used: _,
+                sat_visib: _,
+                course: _,
+                speed: _,
+                hdop: _,
+                ele: _,
+                lat: _,
+                lon: _,
+            } => *time,
+            DatablockEnum::PrevMod(time, _) => *time,
+            DatablockEnum::NextMod(time, _) => *time,
+            DatablockEnum::NoBlock => DateTime::UNIX_EPOCH,
+        }
+    }
 }
 
 pub struct Gt120bDataDump {
@@ -122,7 +141,7 @@ impl Gt120bDataDump {
         //TODO print out everything
     }
     pub fn write_out(&mut self) {
-        //TODO sort
+        self.waypoints.sort_by(|a, b| a.time().cmp(&b.time()));
         let mut next_flags = 0u8;
         for wp in self.waypoints.iter_mut().rev() {
             match wp {
@@ -212,8 +231,10 @@ impl Gt120bDataDump {
             pos += 8;
             for _n in 0..4 {
                 println!("Received data: {:02X?}", &data[pos..(pos + 30)]);
-                self.waypoints
-                    .push(dumpblock_parse_one(data[pos..(pos + 30)].to_vec()));
+                let wp = parse_datablock(data[pos..(pos + 30)].to_vec());
+                if !matches!(wp, DatablockEnum::NoBlock) {
+                    self.waypoints.push(wp);
+                }
                 pos += 30;
             }
         }
@@ -225,13 +246,13 @@ fn dumpblock_parse(data: Vec<u8>) {
     while pos < data.len() {
         pos += 8;
         for _n in 0..4 {
-            dumpblock_parse_one(data[pos..(pos + 30)].to_vec());
+            parse_datablock(data[pos..(pos + 30)].to_vec());
             pos += 30;
         }
     }
 }
 
-fn dumpblock_parse_one(value: Vec<u8>) -> DatablockEnum {
+fn parse_datablock(value: Vec<u8>) -> DatablockEnum {
     if value[0] == 0xff {
         println!("  (empty data)");
         return DatablockEnum::NoBlock;
