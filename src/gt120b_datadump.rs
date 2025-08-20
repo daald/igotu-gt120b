@@ -3,6 +3,7 @@ use chrono::{DateTime, TimeZone, Utc};
 enum DatablockEnum {
     Datablock {
         time: DateTime<Utc>,
+        wpflags: u8,
         sat_used: u8,
         sat_visib: u8,
         course: f32,
@@ -15,6 +16,87 @@ enum DatablockEnum {
     PrevMod(DateTime<Utc>, u8),
     NextMod(DateTime<Utc>, u8),
     NoBlock,
+}
+
+impl DatablockEnum {
+    pub fn dump(&self) {
+        match self {
+            DatablockEnum::Datablock {
+                time: time,
+                wpflags: wpflags,
+                sat_used: sat_used,
+                sat_visib: sat_visib,
+                course: course,
+                speed: speed,
+                hdop: hdop,
+                ele: ele,
+                lat: lat,
+                lon: lon,
+            } => {
+                println!(
+                    "
+      <trkpt lat=\"{lat}\" lon=\"{lon}\">
+        <ele>{ele}</ele>
+        <time>{time}</time>{}
+        <sat>{sat_used}</sat>
+        <hdop>{hdop}</hdop>
+        <extensions>
+          <gpxtpx:TrackPointExtension>
+            <gpxtpx:speed>{speed}</gpxtpx:speed>
+            <gpxtpx:course>{course}</gpxtpx:course>
+          </gpxtpx:TrackPointExtension>
+          <mat:TrackPointExtension>
+            <mat:sat_view>{sat_visib}</mat:sat_view>
+          </mat:TrackPointExtension>
+        </extensions>
+      </trkpt>
+",
+                    if *wpflags != 0 {
+                        format!("\n        <type>WpFlag:{wpflags}</type>")
+                    } else {
+                        "".to_string()
+                    }
+                );
+            }
+            _ => (),
+        }
+    }
+
+    pub fn is_eof(&self) -> bool {
+        match self {
+            DatablockEnum::Datablock {
+                wpflags: wpflags,
+                time: _,
+                sat_used: _,
+                sat_visib: _,
+                course: _,
+                speed: _,
+                hdop: _,
+                ele: _,
+                lat: _,
+                lon: _,
+            } => (*wpflags & 0x02) != 0,
+            DatablockEnum::PrevMod(_, flags) => (*flags & 0x02) != 0,
+            _ => false,
+        }
+    }
+    pub fn is_datapoint(&self) -> bool {
+        match self {
+            DatablockEnum::Datablock {
+                time: _,
+                wpflags: _,
+                sat_used: _,
+                sat_visib: _,
+                course: _,
+                speed: _,
+                hdop: _,
+                ele: _,
+                lat: _,
+                lon: _,
+            } => true,
+            _ => false,
+        }
+    }
 }
 
 pub struct Gt120bDataDump {
@@ -75,8 +157,90 @@ impl Gt120bDataDump {
     }
 
     pub fn close() {
-        //TODO apply flags
+        //TODO apply wpflags
         //TODO print out everything
+    }
+    pub fn write_out(&mut self) {
+        let mut next_flags = 0u8;
+        for wp in self.waypoints.iter_mut().rev() {
+            match wp {
+                DatablockEnum::NoBlock => {}
+                DatablockEnum::PrevMod(_, wpflags) => {
+                    next_flags |= *wpflags;
+                }
+                DatablockEnum::NextMod(_, _) => {
+                    next_flags = 0;
+                }
+                DatablockEnum::Datablock {
+                    wpflags: wpflags,
+                    time: _,
+                    sat_used: _,
+                    sat_visib: _,
+                    course: _,
+                    speed: _,
+                    hdop: _,
+                    ele: _,
+                    lat: _,
+                    lon: _,
+                } => {
+                    *wpflags |= next_flags;
+                    next_flags = 0;
+                }
+            }
+        }
+        let mut next_flags = 0u8;
+        for wp in self.waypoints.iter_mut() {
+            match wp {
+                DatablockEnum::NoBlock => {}
+                DatablockEnum::NextMod(_, wpflags) => {
+                    next_flags |= *wpflags;
+                }
+                DatablockEnum::PrevMod(_, _) => {
+                    next_flags = 0;
+                }
+                DatablockEnum::Datablock {
+                    wpflags: wpflags,
+                    time: _,
+                    sat_used: _,
+                    sat_visib: _,
+                    course: _,
+                    speed: _,
+                    hdop: _,
+                    ele: _,
+                    lat: _,
+                    lon: _,
+                } => {
+                    *wpflags |= next_flags;
+                    next_flags = 0;
+                }
+            }
+        }
+        let mut started = false;
+        for wp in &self.waypoints {
+            if !wp.is_datapoint() {
+                continue;
+            }
+            if !started {
+                println!("﻿<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"no\"?>
+<gpx version=\"1.1\" creator=\"igotU_GPS_WIN\" xmlns:gpxx=\"http://www.garmin.com/xmlschemas/GpxExtensions/v3\" xmlns:gpxwpx=\"http://www.garmin.com/xmlschemas/WaypointExtension/v1\" xmlns:gpxtpx=\"http://www.garmin.com/xmlschemas/TrackPointExtension/v2\" xmlns:mat=\"http://www.mobileaction.com/xmlschemas/TrackPointExtension/v2\" xmlns=\"http://www.topografix.com/GPX/1/1\">
+  <metadata>
+    <desc>//TODO</desc>
+  </metadata>
+  <trk>
+    <trkseg>
+");
+                started = true;
+            }
+            wp.dump();
+            if started && wp.is_eof() {
+                println!(
+                    "    </trkseg>
+  </trk>
+</gpx>"
+                );
+                started = false;
+            }
+        }
     }
 
     fn dumpblock_hex(&mut self, data: Vec<u8>) {
@@ -180,9 +344,10 @@ fn dumpblock_parse_one(value: Vec<u8>) -> DatablockEnum {
 "
     );
     DatablockEnum::Datablock {
+        time: time,
+        wpflags: 0,
         sat_used: sat_used,
         sat_visib: sat_visib,
-        time: time,
         course: course,
         speed: speed,
         hdop: hdop,

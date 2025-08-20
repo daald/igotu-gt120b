@@ -81,6 +81,10 @@ pub fn workflow(comm: &mut CommBulk, bestreplay: bool) {
         }
     }
 
+    if let Some(ref mut datadumper) = datadumper_ref {
+        datadumper.write_out();
+    }
+
     if comm.is_real() {
         panic!("safety stop");
     }
