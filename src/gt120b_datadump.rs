@@ -1,4 +1,4 @@
-use chrono::{DateTime, TimeZone, Utc};
+use chrono::{DateTime, Local, TimeZone, Utc};
 use std::fs::File;
 use std::io::{BufWriter, Result, Write};
 
@@ -149,7 +149,8 @@ impl Gt120bDataDump {
         self.waypoints.sort_by(|a, b| a.time().cmp(&b.time()));
 
         fn start_file(name: &str) -> Result<Option<BufWriter<File>>> {
-            let mut f = File::create(name)?;
+            println!("Writing gpx file {name}");
+            let f = File::create(name)?;
             let mut fbuf = BufWriter::new(f);
             assert!(fbuf.capacity() > 0);
             writeln!(&mut fbuf,"﻿<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"no\"?>
@@ -163,19 +164,45 @@ impl Gt120bDataDump {
             fbuf.flush()?;
             Ok(Some(fbuf))
         }
-        fn end_file(ref mut f: BufWriter<File>) -> Result<()> {
-            writeln!(
-                f,
-                "    </trkseg>
+        fn end_file(ref mut f_ref: Option<BufWriter<File>>) -> Result<()> {
+            if let Some(f) = f_ref {
+                writeln!(
+                    f,
+                    "    </trkseg>
   </trk>
 </gpx>"
-            )?;
-            f.flush()?;
+                )?;
+                f.flush()?;
+            }
             Ok(())
+        }
+
+        let mut lastday = -1;
+        fn need_daychange(wp: &DatablockEnum) -> bool {
+            if let DatablockEnum::Datablock {
+                wpflags: _,
+                time,
+                sat_used: _,
+                sat_visib: _,
+                course: _,
+                speed: _,
+                hdop: _,
+                ele: _,
+                lat: _,
+                lon: _,
+            } = wp
+            {
+                let localdatetime: DateTime<Local> = DateTime::from(*time);
+                return false;
+            } else {
+                return false;
+            }
         }
 
         self.transfer_flags_reverse();
         self.transfer_flags_forward();
+
+        let conf_change_every_day = true;
 
         let mut f_ref: Option<BufWriter<File>> = None;
         let mut filenum = 0;
@@ -185,18 +212,18 @@ impl Gt120bDataDump {
             }
             if f_ref.is_none() {
                 filenum += 1;
-                f_ref = start_file(&format!("a-{}.gpx", filenum).to_string())?;
+                f_ref = start_file(&format!("testout-{}.gpx", filenum).to_string())?;
             }
             wp.dump(f_ref.as_mut().expect("at this stage, file is always open"))?;
-            if wp.is_eof() {
-                if let Some(f) = f_ref {
-                    end_file(f)?;
+            if f_ref.is_some() {
+                if wp.is_eof() || (conf_change_every_day && need_daychange(wp)) {
+                    end_file(f_ref)?;
                     f_ref = None;
                 }
             }
         }
-        if let Some(f) = f_ref {
-            end_file(f)?;
+        if f_ref.is_some() {
+            end_file(f_ref)?;
         }
         Ok(())
     }
