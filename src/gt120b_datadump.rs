@@ -140,11 +140,6 @@ impl Gt120bDataDump {
         self.dumpblock_hex(data);
         //       dumpblock_parse(data);
     }
-
-    pub fn close() {
-        //TODO apply wpflags
-        //TODO print out everything
-    }
     pub fn write_out(&mut self) -> Result<usize> {
         self.waypoints.sort_by(|a, b| a.time().cmp(&b.time()));
 
@@ -352,17 +347,15 @@ fn parse_datablock(value: Vec<u8>) -> DatablockEnum {
         .unwrap();
 
     if value[0] == 0x41 {
-        println!("  (? new track, no data) WpFlags of following + 0x01");
+        // new track, no geo
         return DatablockEnum::NextMod(time, 0x01);
     }
     if value[0] == 0x42 {
-        println!("  (switch-off. not to gpx) WpFlags of previous + 0x02");
+        // switch-off. geo but no waypoint
         return DatablockEnum::PrevMod(time, 0x02); // we could dump this. but orig sw ignores this coords and only takes the flag
     }
     if value[0] == 0x43 {
-        println!(
-            "  (? button pressed, note in next waypoint, this record doesn't contain coordinates) WpFlags of following + 0x10"
-        );
+        // button pressed, no geo
         return DatablockEnum::NextMod(time, 0x10);
     }
 
@@ -375,26 +368,6 @@ fn parse_datablock(value: Vec<u8>) -> DatablockEnum {
     let lat = u32::from_le_bytes(value[14..18].try_into().unwrap()) as f32 / 10000000.0;
     let lon = u32::from_le_bytes(value[18..22].try_into().unwrap()) as f32 / 10000000.0;
 
-    println!(
-        "
-      <trkpt lat=\"{lat}\" lon=\"{lon}\">
-        <ele>{ele}</ele>
-        <time>{}</time>
-        <sat>{sat_used}</sat>
-        <hdop>{hdop}</hdop>
-        <extensions>
-          <gpxtpx:TrackPointExtension>
-            <gpxtpx:speed>{speed}</gpxtpx:speed>
-            <gpxtpx:course>{course}</gpxtpx:course>
-          </gpxtpx:TrackPointExtension>
-          <mat:TrackPointExtension>
-            <mat:sat_view>{sat_visib}</mat:sat_view>
-          </mat:TrackPointExtension>
-        </extensions>
-      </trkpt>
-",
-        time.to_rfc3339()
-    );
     DatablockEnum::Datablock {
         time: time,
         wpflags: 0,
