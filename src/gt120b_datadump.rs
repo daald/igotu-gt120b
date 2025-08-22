@@ -39,7 +39,7 @@ impl DatablockEnum {
                     f,
                     "      <trkpt lat=\"{lat}\" lon=\"{lon}\">
         <ele>{ele}</ele>
-        <time>{time}</time>{}
+        <time>{}</time>{}
         <sat>{sat_used}</sat>
         <hdop>{hdop}</hdop>
         <extensions>
@@ -52,6 +52,7 @@ impl DatablockEnum {
           </mat:TrackPointExtension>
         </extensions>
       </trkpt>",
+                    time.to_rfc3339(),
                     if *wpflags != 0 {
                         format!("\n        <type>WpFlag:{wpflags}</type>")
                     } else {
@@ -157,7 +158,7 @@ impl Gt120bDataDump {
     <desc>//TODO</desc>
   </metadata>
   <trk>
-    <trkseg>");
+    <trkseg>")?;
             fbuf.flush()?;
             Ok(Some(fbuf))
         }
@@ -167,7 +168,7 @@ impl Gt120bDataDump {
                 "    </trkseg>
   </trk>
 </gpx>"
-            );
+            )?;
             f.flush()?;
             Ok(())
         }
@@ -345,7 +346,7 @@ fn parse_datablock(value: Vec<u8>) -> DatablockEnum {
         "
       <trkpt lat=\"{lat}\" lon=\"{lon}\">
         <ele>{ele}</ele>
-        <time>{time}</time>
+        <time>{}</time>
         <sat>{sat_used}</sat>
         <hdop>{hdop}</hdop>
         <extensions>
@@ -358,7 +359,8 @@ fn parse_datablock(value: Vec<u8>) -> DatablockEnum {
           </mat:TrackPointExtension>
         </extensions>
       </trkpt>
-"
+",
+        time.to_rfc3339()
     );
     DatablockEnum::Datablock {
         time: time,
