@@ -153,6 +153,7 @@ impl Gt120bDataDump {
             let mut fbuf = BufWriter::new(f);
             assert!(fbuf.capacity() > 0);
             writeln!(&mut fbuf,"﻿<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"no\"?>
+<!-- generated using test of rust implementation -->
 <gpx version=\"1.1\" creator=\"igotU_GPS_WIN\" xmlns:gpxx=\"http://www.garmin.com/xmlschemas/GpxExtensions/v3\" xmlns:gpxwpx=\"http://www.garmin.com/xmlschemas/WaypointExtension/v1\" xmlns:gpxtpx=\"http://www.garmin.com/xmlschemas/TrackPointExtension/v2\" xmlns:mat=\"http://www.mobileaction.com/xmlschemas/TrackPointExtension/v2\" xmlns=\"http://www.topografix.com/GPX/1/1\">
   <metadata>
     <desc>//TODO</desc>
