@@ -1,4 +1,4 @@
-use chrono::{DateTime, Local, TimeZone, Utc};
+use chrono::{DateTime, Local, NaiveDate, TimeZone, Utc};
 use std::fs::File;
 use std::io::{BufWriter, Result, Write};
 
@@ -145,7 +145,7 @@ impl Gt120bDataDump {
         //TODO apply wpflags
         //TODO print out everything
     }
-    pub fn write_out(&mut self) -> Result<()> {
+    pub fn write_out(&mut self) -> Result<usize> {
         self.waypoints.sort_by(|a, b| a.time().cmp(&b.time()));
 
         fn start_file(name: &str) -> Result<Option<BufWriter<File>>> {
@@ -177,8 +177,8 @@ impl Gt120bDataDump {
             Ok(())
         }
 
-        let mut lastday = -1;
-        fn need_daychange(wp: &DatablockEnum) -> bool {
+        let mut lastday = NaiveDate::MIN;
+        fn need_daychange(wp: &DatablockEnum, lastday: &mut NaiveDate) -> bool {
             if let DatablockEnum::Datablock {
                 wpflags: _,
                 time,
@@ -193,7 +193,11 @@ impl Gt120bDataDump {
             } = wp
             {
                 let localdatetime: DateTime<Local> = DateTime::from(*time);
-                return false;
+                let day = localdatetime.date_naive();
+                println!(":: {} {}", localdatetime, day);
+                let r = day != *lastday && *lastday != NaiveDate::MIN;
+                *lastday = day;
+                return r;
             } else {
                 return false;
             }
@@ -216,7 +220,7 @@ impl Gt120bDataDump {
             }
             wp.dump(f_ref.as_mut().expect("at this stage, file is always open"))?;
             if f_ref.is_some() {
-                if wp.is_eof() || (conf_change_every_day && need_daychange(wp)) {
+                if (conf_change_every_day && need_daychange(wp, &mut lastday)) || wp.is_eof() {
                     end_file(f_ref)?;
                     f_ref = None;
                 }
@@ -225,7 +229,8 @@ impl Gt120bDataDump {
         if f_ref.is_some() {
             end_file(f_ref)?;
         }
-        Ok(())
+        println!("Exported {filenum} files");
+        Ok(filenum)
     }
 
     fn transfer_flags_forward(&mut self) {
