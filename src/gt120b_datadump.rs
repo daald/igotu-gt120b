@@ -1,4 +1,6 @@
 use chrono::{DateTime, TimeZone, Utc};
+use std::fs::File;
+use std::io::{BufWriter, Result, Write};
 
 enum DatablockEnum {
     Datablock {
@@ -19,7 +21,7 @@ enum DatablockEnum {
 }
 
 impl DatablockEnum {
-    pub fn dump(&self) {
+    pub fn dump(&self, f: &mut BufWriter<File>) -> Result<()> {
         match self {
             DatablockEnum::Datablock {
                 time,
@@ -33,7 +35,8 @@ impl DatablockEnum {
                 lat,
                 lon,
             } => {
-                println!(
+                writeln!(
+                    f,
                     "      <trkpt lat=\"{lat}\" lon=\"{lon}\">
         <ele>{ele}</ele>
         <time>{time}</time>{}
@@ -54,10 +57,11 @@ impl DatablockEnum {
                     } else {
                         "".to_string()
                     }
-                );
+                )?;
             }
             _ => (),
         }
+        Ok(())
     }
 
     pub fn is_eof(&self) -> bool {
@@ -140,8 +144,91 @@ impl Gt120bDataDump {
         //TODO apply wpflags
         //TODO print out everything
     }
-    pub fn write_out(&mut self) {
+    pub fn write_out(&mut self) -> Result<()> {
         self.waypoints.sort_by(|a, b| a.time().cmp(&b.time()));
+
+        fn start_file(name: &str) -> Result<Option<BufWriter<File>>> {
+            let mut f = File::create(name)?;
+            let mut fbuf = BufWriter::new(f);
+            assert!(fbuf.capacity() > 0);
+            writeln!(&mut fbuf,"﻿<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"no\"?>
+<gpx version=\"1.1\" creator=\"igotU_GPS_WIN\" xmlns:gpxx=\"http://www.garmin.com/xmlschemas/GpxExtensions/v3\" xmlns:gpxwpx=\"http://www.garmin.com/xmlschemas/WaypointExtension/v1\" xmlns:gpxtpx=\"http://www.garmin.com/xmlschemas/TrackPointExtension/v2\" xmlns:mat=\"http://www.mobileaction.com/xmlschemas/TrackPointExtension/v2\" xmlns=\"http://www.topografix.com/GPX/1/1\">
+  <metadata>
+    <desc>//TODO</desc>
+  </metadata>
+  <trk>
+    <trkseg>");
+            fbuf.flush()?;
+            Ok(Some(fbuf))
+        }
+        fn end_file(ref mut f: BufWriter<File>) -> Result<()> {
+            writeln!(
+                f,
+                "    </trkseg>
+  </trk>
+</gpx>"
+            );
+            f.flush()?;
+            Ok(())
+        }
+
+        self.transfer_flags_reverse();
+        self.transfer_flags_forward();
+
+        let mut f_ref: Option<BufWriter<File>> = None;
+        let mut filenum = 0;
+        for wp in &self.waypoints {
+            if !wp.is_datapoint() {
+                continue;
+            }
+            if f_ref.is_none() {
+                filenum += 1;
+                f_ref = start_file(&format!("a-{}.gpx", filenum).to_string())?;
+            }
+            wp.dump(f_ref.as_mut().expect("at this stage, file is always open"))?;
+            if wp.is_eof() {
+                if let Some(f) = f_ref {
+                    end_file(f)?;
+                    f_ref = None;
+                }
+            }
+        }
+        if let Some(f) = f_ref {
+            end_file(f)?;
+        }
+        Ok(())
+    }
+
+    fn transfer_flags_forward(&mut self) {
+        let mut next_flags = 0u8;
+        for wp in self.waypoints.iter_mut() {
+            match wp {
+                DatablockEnum::NoBlock => {}
+                DatablockEnum::PrevMod(_, _) => {
+                    next_flags = 0;
+                }
+                DatablockEnum::NextMod(_, wpflags) => {
+                    next_flags |= *wpflags;
+                }
+                DatablockEnum::Datablock {
+                    wpflags,
+                    time: _,
+                    sat_used: _,
+                    sat_visib: _,
+                    course: _,
+                    speed: _,
+                    hdop: _,
+                    ele: _,
+                    lat: _,
+                    lon: _,
+                } => {
+                    *wpflags |= next_flags;
+                    next_flags = 0;
+                }
+            }
+        }
+    }
+    fn transfer_flags_reverse(&mut self) {
         let mut next_flags = 0u8;
         for wp in self.waypoints.iter_mut().rev() {
             match wp {
@@ -167,58 +254,6 @@ impl Gt120bDataDump {
                     *wpflags |= next_flags;
                     next_flags = 0;
                 }
-            }
-        }
-        let mut next_flags = 0u8;
-        for wp in self.waypoints.iter_mut() {
-            match wp {
-                DatablockEnum::NoBlock => {}
-                DatablockEnum::NextMod(_, wpflags) => {
-                    next_flags |= *wpflags;
-                }
-                DatablockEnum::PrevMod(_, _) => {
-                    next_flags = 0;
-                }
-                DatablockEnum::Datablock {
-                    wpflags,
-                    time: _,
-                    sat_used: _,
-                    sat_visib: _,
-                    course: _,
-                    speed: _,
-                    hdop: _,
-                    ele: _,
-                    lat: _,
-                    lon: _,
-                } => {
-                    *wpflags |= next_flags;
-                    next_flags = 0;
-                }
-            }
-        }
-        let mut started = false;
-        for wp in &self.waypoints {
-            if !wp.is_datapoint() {
-                continue;
-            }
-            if !started {
-                println!("﻿<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"no\"?>
-<gpx version=\"1.1\" creator=\"igotU_GPS_WIN\" xmlns:gpxx=\"http://www.garmin.com/xmlschemas/GpxExtensions/v3\" xmlns:gpxwpx=\"http://www.garmin.com/xmlschemas/WaypointExtension/v1\" xmlns:gpxtpx=\"http://www.garmin.com/xmlschemas/TrackPointExtension/v2\" xmlns:mat=\"http://www.mobileaction.com/xmlschemas/TrackPointExtension/v2\" xmlns=\"http://www.topografix.com/GPX/1/1\">
-  <metadata>
-    <desc>//TODO</desc>
-  </metadata>
-  <trk>
-    <trkseg>");
-                started = true;
-            }
-            wp.dump();
-            if started && wp.is_eof() {
-                println!(
-                    "    </trkseg>
-  </trk>
-</gpx>"
-                );
-                started = false;
             }
         }
     }
