@@ -173,26 +173,18 @@ impl Gt120bDataDump {
         }
 
         let mut lastday = NaiveDate::MIN;
-        fn need_daychange(wp: &DatablockEnum, lastday: &mut NaiveDate) -> bool {
-            if let DatablockEnum::Datablock {
-                wpflags: _,
-                time,
-                sat_used: _,
-                sat_visib: _,
-                course: _,
-                speed: _,
-                hdop: _,
-                ele: _,
-                lat: _,
-                lon: _,
-            } = wp
-            {
-                let localdatetime: DateTime<Local> = DateTime::from(*time);
-                let day = localdatetime.date_naive();
-                println!(":: {} {}", localdatetime, day);
-                let r = day != *lastday && *lastday != NaiveDate::MIN;
-                *lastday = day;
-                return r;
+        fn set_daychange(time: &DateTime<Utc>, lastday: &mut NaiveDate) {
+            let localdatetime: DateTime<Local> = DateTime::from(*time);
+            let day = localdatetime.date_naive();
+            *lastday = day;
+        }
+        fn need_daychange(time: &DateTime<Utc>, lastday: &mut NaiveDate) -> bool {
+            let localdatetime: DateTime<Local> = DateTime::from(*time);
+            let day = localdatetime.date_naive();
+            println!(":: {} {}", localdatetime, day);
+            if day != *lastday {
+                set_daychange(time, lastday);
+                return true;
             } else {
                 return false;
             }
@@ -206,18 +198,36 @@ impl Gt120bDataDump {
         let mut f_ref: Option<BufWriter<File>> = None;
         let mut filenum = 0;
         for wp in &self.waypoints {
-            if !wp.is_datapoint() {
-                continue;
-            }
-            if f_ref.is_none() {
-                filenum += 1;
-                f_ref = start_file(&format!("testout-{}.gpx", filenum).to_string())?;
-            }
-            wp.dump(f_ref.as_mut().expect("at this stage, file is always open"))?;
-            if f_ref.is_some() {
-                if (conf_change_every_day && need_daychange(wp, &mut lastday)) || wp.is_eof() {
-                    end_file(f_ref)?;
-                    f_ref = None;
+            if let DatablockEnum::Datablock {
+                wpflags: _,
+                time,
+                sat_used: _,
+                sat_visib: _,
+                course: _,
+                speed: _,
+                hdop: _,
+                ele: _,
+                lat: _,
+                lon: _,
+            } = wp
+            {
+                if f_ref.is_some() {
+                    if conf_change_every_day && need_daychange(time, &mut lastday) {
+                        end_file(f_ref)?;
+                        f_ref = None;
+                    }
+                }
+                if f_ref.is_none() {
+                    filenum += 1;
+                    f_ref = start_file(&format!("testout-{}.gpx", filenum).to_string())?;
+                    set_daychange(time, &mut lastday);
+                }
+                wp.dump(f_ref.as_mut().expect("at this stage, file is always open"))?;
+                if f_ref.is_some() {
+                    if wp.is_eof() {
+                        end_file(f_ref)?;
+                        f_ref = None;
+                    }
                 }
             }
         }
