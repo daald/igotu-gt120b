@@ -28,6 +28,9 @@ struct Args {
     #[arg(short, long, default_value_t = false)]
     bestreplay: bool,
 
+    #[arg(long, default_value_t = true)]
+    orig_sw_equivalent: bool,
+
     //let replay_file = "src/replay-120b.txt";
     //let replay_file = "src/gt-120b-kvm-sesson-20250529.json.txt";
     //let replay_file = "src/gt-120b-kvm-sesson-20250603.json.txt";
@@ -50,7 +53,7 @@ fn main() {
     };
     let mut comm = CommBulk { intf: intf };
 
-    workflow(&mut comm, args.bestreplay);
+    workflow(&mut comm, args.bestreplay, args.orig_sw_equivalent);
 
     println!("END");
 }

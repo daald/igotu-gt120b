@@ -1,5 +1,6 @@
 use crate::CommBulk;
-use hex_literal::hex; //use: hex!
+use hex_literal::hex;
+use serde::{Deserialize, Serialize}; //use: hex!
 
 pub fn cmd_nmea_switch(comm: &mut CommBulk, flag: bool) {
     println!("Send cmd_nmea_switch");
@@ -38,7 +39,29 @@ pub fn cmd_model(comm: &mut CommBulk) -> Model {
     }
 }
 
-pub fn cmd_identification(comm: &mut CommBulk) {
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+#[derive(PartialEq, Debug)]
+pub struct IdentificationJson {
+    manufacturer: String,
+    model: u16,
+    deviceID: String,
+    name: String,
+    alias: String,
+    serialNumber: String,
+    #[serde(rename = "HWVersion")]
+    hwVersion: String,
+    #[serde(rename = "FWVersion")]
+    fwVersion: String,
+    #[serde(rename = "SWVersion")]
+    swVersion: String,
+    description: String,
+}
+
+pub fn cmd_identification(
+    comm: &mut CommBulk,
+    conf_orig_sw_equivalent: bool,
+) -> IdentificationJson {
     println!("Send cmd_identification");
     let command: Vec<u8> = hex!["930a"].to_vec();
 
@@ -48,7 +71,6 @@ pub fn cmd_identification(comm: &mut CommBulk) {
         panic!("Unexpected answer: {answer:02x?}");
     }
 
-    // TODO a lot to extract from this response
     let serial = u32::from_le_bytes(answer[0..4].try_into().unwrap()); // was little endian in commands.cpp
     let version1 = answer[4];
     let version2 = answer[5];
@@ -71,31 +93,29 @@ pub fn cmd_identification(comm: &mut CommBulk) {
         _ => panic!("Unknown model code: {model}"),
     };
 
-    println!(
-        "
-identification:
-  serial:   {serial}
-  serialnumber: {serialnumber}
-  version:  {version}
-  deviceid: {deviceid}
-  name2:    {name2}
-  model:    {model}
-"
-    );
-    println!(
-        "{{
-      \"Manufacturer\": \"\",
-      \"Model\": {model},
-      \"DeviceID\": \"{deviceid}\",
-      \"Name\": \"{modelname}-{name2}\",
-      \"Alias\": \"{modelname}-{name2}\",
-      \"SerialNumber\": \"{serialnumber}\",
-      \"HWVersion\": \"\",
-      \"FWVersion\": \"{version}\",
-      \"SWVersion\": \"not installed\",
-      \"Description\": \"\"
-    }}"
-    );
+    let conf_orig_sw_equivalent = true;
+
+    let id_struct = IdentificationJson {
+        manufacturer: if conf_orig_sw_equivalent {
+            "".to_owned()
+        } else {
+            "mobileaction //TODO".to_owned()
+        },
+        model: model,
+        deviceID: deviceid,
+        name: format!("{modelname}-{name2}"), // TODO name or alias is customizable
+        alias: format!("{modelname}-{name2}"),
+        serialNumber: serialnumber.to_string(),
+        hwVersion: "".to_owned(), //TODO no way to find out??
+        fwVersion: version,
+        swVersion: "not installed".to_owned(),
+        description: "".to_owned(),
+    };
+
+    println!("{}", serde_json::to_string(&id_struct).unwrap());
+    println!("{}", serde_json::to_string_pretty(&id_struct).unwrap());
+
+    return id_struct;
 
     /*
     IdentificationCommand

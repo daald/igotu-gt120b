@@ -1,15 +1,16 @@
 use crate::comm_bulk::CommBulk;
+use crate::commands::IdentificationJson;
 use crate::commands::{
     Model, cmd_count, cmd_delete_reboot, cmd_identification, cmd_model, cmd_nmea_switch, cmd_read,
     cmd_set_time,
 };
 use crate::gt120b_datadump::Gt120bDataDump;
 
-pub fn workflow(comm: &mut CommBulk, bestreplay: bool) {
+pub fn workflow(comm: &mut CommBulk, bestreplay: bool, conf_orig_sw_equivalent: bool) {
     // set line coding request - probably not needed
     //sync_send_control(handle, 0x21, 0x20 /* set line coding*/, 0, 0, "\x00\xc2\x01\x00\x00\x00\x08", 7, 2000 );
 
-    let (id_model, id_offset) = cmdblock_identify(comm);
+    let (id_model, id_offset, id_struct) = cmdblock_identify(comm, conf_orig_sw_equivalent);
     assert_eq!(id_model, Model::Gt120);
 
     // ./decode-igotu-trace3+120b.py says ReadCommand(pos = 0x1fff80, size = 0x0008) but this is not calculatable with cpp code. I guess another impl from manufacturer
@@ -93,9 +94,10 @@ pub fn workflow(comm: &mut CommBulk, bestreplay: bool) {
 
     // here: device reboots itself without returning an answer
 
-    let (id2_model, _id2_offset) = cmdblock_identify(comm);
-    assert_eq!(id_model, id2_model); // TODO verify model, serial etc. count WILL be different
-    //assert_eq!(id_count, id2_count); // TODO verify model, serial etc. count WILL be different
+    let (id2_model, _id2_offset, id2_struct) = cmdblock_identify(comm, conf_orig_sw_equivalent);
+    // check everything except offset
+    assert_eq!(id_model, id2_model);
+    assert_eq!(id_struct, id2_struct);
 
     let payload = cmd_read(comm, 0x1fff80, 0x0008); // from data dump of original software. no clue what is expected here // TODO force all FFs?
     assert!(
@@ -131,7 +133,10 @@ fn cmdblock_find_end_offset(comm: &mut CommBulk, id_offset: u32) -> (u32, bool) 
     return (end_offset, all_begin_empty);
 }
 
-fn cmdblock_identify(comm: &mut CommBulk) -> (Model, u32) {
+fn cmdblock_identify(
+    comm: &mut CommBulk,
+    conf_orig_sw_equivalent: bool,
+) -> (Model, u32, IdentificationJson) {
     println!("In cmdblock_identify()");
 
     // NmeaSwitchCommand enable=1
@@ -142,14 +147,13 @@ fn cmdblock_identify(comm: &mut CommBulk) -> (Model, u32) {
     println!("Model: {model}"); //TODO return
 
     // IdentificationCommand
-    cmd_identification(comm);
-    //TODO use&return the result
+    let id_struct = cmd_identification(comm, conf_orig_sw_equivalent);
 
     // CountCommand
     let offset = cmd_count(comm);
 
     //TODO return all identification results
-    return (model, offset);
+    return (model, offset, id_struct);
 }
 
 /*
