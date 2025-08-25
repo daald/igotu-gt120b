@@ -83,7 +83,9 @@ pub fn workflow(comm: &mut CommBulk, bestreplay: bool, conf_orig_sw_equivalent: 
     }
 
     if let Some(ref mut datadumper) = datadumper_ref {
-        datadumper.write_out();
+        datadumper
+            .write_out()
+            .expect("Problem while exporting to gpx files");
     }
 
     if comm.is_real() {

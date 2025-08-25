@@ -45,16 +45,17 @@ pub fn cmd_model(comm: &mut CommBulk) -> Model {
 pub struct IdentificationJson {
     manufacturer: String,
     model: u16,
-    deviceID: String,
+    #[serde(rename = "DeviceID")]
+    device_id: String,
     name: String,
     alias: String,
-    serialNumber: String,
+    serial_number: String,
     #[serde(rename = "HWVersion")]
-    hwVersion: String,
+    hw_version: String,
     #[serde(rename = "FWVersion")]
-    fwVersion: String,
+    fw_version: String,
     #[serde(rename = "SWVersion")]
-    swVersion: String,
+    sw_version: String,
     description: String,
 }
 
@@ -93,8 +94,6 @@ pub fn cmd_identification(
         _ => panic!("Unknown model code: {model}"),
     };
 
-    let conf_orig_sw_equivalent = true;
-
     let id_struct = IdentificationJson {
         manufacturer: if conf_orig_sw_equivalent {
             "".to_owned()
@@ -102,13 +101,13 @@ pub fn cmd_identification(
             "mobileaction //TODO".to_owned()
         },
         model: model,
-        deviceID: deviceid,
+        device_id: deviceid,
         name: format!("{modelname}-{name2}"), // TODO name or alias is customizable
         alias: format!("{modelname}-{name2}"),
-        serialNumber: serialnumber.to_string(),
-        hwVersion: "".to_owned(), //TODO no way to find out??
-        fwVersion: version,
-        swVersion: "not installed".to_owned(),
+        serial_number: serialnumber.to_string(),
+        hw_version: "".to_owned(), //TODO no way to find out??
+        fw_version: version,
+        sw_version: "not installed".to_owned(),
         description: "".to_owned(),
     };
 
@@ -116,30 +115,6 @@ pub fn cmd_identification(
     println!("{}", serde_json::to_string_pretty(&id_struct).unwrap());
 
     return id_struct;
-
-    /*
-    IdentificationCommand
-    3406	55.569581	host	3.8.1	USB	64	URB_BULK in						0
-    3407	55.569800	host	3.8.1	USB	80	URB_BULK out	930a0000000000000000000000000063	16
-    3408	55.569849	3.8.1	host	USB	64	URB_BULK out						0
-    3409	55.570052	3.8.1	host	USB	85	URB_BULK in	930011a623630d0102000a2b2e660d718c18000233	21
-
-    simple_cmd(&interface,
-        [0x93,0x0a,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x63].to_vec(),
-        hex!("930011a623630d0102000a2b2e660d718c18000233").to_vec()); //unknown
-
-    //  received [93, 00, 11, A6, 23, 63, 0D, 01, 02, 00, 0A, 4D, 2F, 66, 0D, 71, 8C, 18, 00, 02, 10]
-    // expected: [93, 00, 11, A6, 23, 63, 0D, 01, 02, 00, 0A, 2B, 2E, 66, 0D, 71, 8C, 18, 00, 02, 33]
-    //                                                        ^^  ^^                              ^^
-    //                        |id----------|  |ver-|          ^ firmware?   66 0D could be device name GT120B-0D66  device id 0010-00188C710D66
-    // firmware 1.2.220218 or 1.2.230111 or 1.2.231013
-    */
-
-    /*
-    examples
-    #: identification                        > 93:0a:00:00:00:00:00:00:00:00:00:00:00:00:00:63 < 93:00:11:a6:23:63:0d:01:02:00:0a:2b:2e:66:0d:71:8c:18:00:02:33
-    #: identification                        > 93:0a:00:00:00:00:00:00:00:00:00:00:00:00:00:63 < 93:00:11:a6:23:63:0d:01:02:00:0a:4d:2f:66:0d:71:8c:18:00:02:10
-    */
 }
 
 fn calculate_offset_from_count(b: u8, c: u8) -> u32 {

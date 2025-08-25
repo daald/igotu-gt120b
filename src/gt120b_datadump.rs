@@ -137,7 +137,7 @@ impl Gt120bDataDump {
     pub fn process_datablock(&mut self, data: Vec<u8>) {
         let structsize = 8 + 4 * 30;
         assert_eq!(0, data.len() % structsize);
-        self.dumpblock_hex(data);
+        self.parse_data(data);
         //       dumpblock_parse(data);
     }
     pub fn write_out(&mut self) -> Result<usize> {
@@ -297,7 +297,7 @@ impl Gt120bDataDump {
         }
     }
 
-    fn dumpblock_hex(&mut self, data: Vec<u8>) {
+    fn parse_data(&mut self, data: Vec<u8>) {
         // TODO print offset for verbosity
         let mut pos = 0;
         while pos < data.len() {
