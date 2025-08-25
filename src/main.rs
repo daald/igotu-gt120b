@@ -1,15 +1,15 @@
 mod comm_bulk;
 mod commands;
 mod gt120b_datadump;
+mod gt120b_workflow;
 mod intf;
 mod intf_bulk;
 mod intf_file;
-mod workflow_120b;
 use crate::comm_bulk::CommBulk;
+use crate::gt120b_workflow::workflow;
 use crate::intf::Intf;
 use crate::intf_bulk::IntfBulk;
 use crate::intf_file::IntfFile;
-use crate::workflow_120b::workflow;
 use clap::Parser;
 
 /// Simple program to greet a person
