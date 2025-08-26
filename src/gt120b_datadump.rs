@@ -375,8 +375,8 @@ fn parse_datablock(value: Vec<u8>) -> DatablockEnum {
     let speed = u16::from_le_bytes(value[26..28].try_into().unwrap()) as f32 / 100.0;
     let hdop = value[8] as f32 / 10.0;
     let ele = i32::from_le_bytes(value[22..26].try_into().unwrap()) as f32 / 100.0;
-    let lat = u32::from_le_bytes(value[14..18].try_into().unwrap()) as f32 / 10000000.0;
-    let lon = u32::from_le_bytes(value[18..22].try_into().unwrap()) as f32 / 10000000.0;
+    let lat = i32::from_le_bytes(value[14..18].try_into().unwrap()) as f32 / 10000000.0;
+    let lon = i32::from_le_bytes(value[18..22].try_into().unwrap()) as f32 / 10000000.0;
 
     DatablockEnum::Datablock {
         time: time,
