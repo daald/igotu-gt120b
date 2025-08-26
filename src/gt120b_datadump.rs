@@ -219,7 +219,7 @@ impl Gt120bDataDump {
                 }
                 if f_ref.is_none() {
                     filenum += 1;
-                    f_ref = start_file(&format!("testout-{}.gpx", filenum).to_string())?;
+                    f_ref = start_file(&format!("testout-{:02}.gpx", filenum).to_string())?;
                     set_daychange(time, &mut lastday);
                 }
                 wp.dump(f_ref.as_mut().expect("at this stage, file is always open"))?;
