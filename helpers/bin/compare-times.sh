@@ -38,7 +38,8 @@ def round_to_sign_digits(x,decimal_places=3):
     '''round to n significant digits'''
     return round(x, -int(floor(log10(abs(x))))-1+decimal_places)
 
-def round_floats_in_stream(decimal_places=0):
+def round_floats_in_stream(decimal_places):
+    '''round all numbers to a number of significant digits. eg (with 3) 1234.567 -> 1230, 1.234567 -> 1.23, 0.01234567 -> 0.0123'''
     # Regular expression to find float numbers
     float_pattern = r'-?\d+\.\d+'
     time_pattern = r'20\d\d-?.*[\dZ]'
