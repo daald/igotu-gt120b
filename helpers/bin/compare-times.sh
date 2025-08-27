@@ -27,16 +27,20 @@ basename="$(dirname "$replayfile")"
 
 # normalizes numbers (round to 3 significant digits) and times (same format)
 process_gpx_file() {
+set +x
 python3 -c "
-from math import log10, floor
-from datetime import datetime # python>=3.11  - datetime.fromisoformat
-import dateutil.parser  # python<3.11  - dateutil.parser.isoparse (needs sudo apt-get install python3-dateutil)
 import fileinput
 import re
+from math import log10, floor
 
-def round_to_sign_digits(x,decimal_places=3):
+from datetime import datetime # python>=3.11  - datetime.fromisoformat
+import dateutil.parser  # python<3.11  - dateutil.parser.isoparse (needs sudo apt-get install python3-dateutil)
+
+
+def round_to_sign_digits(x, decimal_places=3):
     '''round to n significant digits'''
-    return round(x, -int(floor(log10(abs(x))))-1+decimal_places)
+    return round(x, -int(floor(log10(abs(x)))) - 1 + decimal_places)
+
 
 def round_floats_in_stream(decimal_places):
     '''round all numbers to a number of significant digits. eg (with 3) 1234.567 -> 1230, 1.234567 -> 1.23, 0.01234567 -> 0.0123'''
@@ -48,6 +52,7 @@ def round_floats_in_stream(decimal_places):
         s = match.group()
         t = dateutil.parser.isoparse(s)  # only python >= 3.11 supports full iso format
         return t.isoformat()
+
     # Function to round the float numbers
     def round_match(match):
         number = float(match.group())
@@ -56,20 +61,22 @@ def round_floats_in_stream(decimal_places):
         return s
 
     for line in fileinput.input():
-      if '<!-- generated using' in line:
-        continue
-      elif '<time' in line:
-        # Replace float numbers with their rounded versions
-        outline = re.sub(time_pattern, time_match, line)
-      else:
-        # Replace float numbers with their rounded versions
-        outline = re.sub(float_pattern, round_match, line)
+        if '<!-- generated using' in line:
+            continue
+        elif '<time' in line:
+            # Replace float numbers with their rounded versions
+            outline = re.sub(time_pattern, time_match, line)
+        else:
+            # Replace float numbers with their rounded versions
+            outline = re.sub(float_pattern, round_match, line)
 
-      print(outline, end='');
+        print(outline, end='');
+
 
 # Usage
 round_floats_in_stream(decimal_places=2)
 "
+set -x
 }
 
 expect_filelist="$(mktemp)"
