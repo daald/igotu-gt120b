@@ -118,8 +118,8 @@ while read -eu 4 expect_file && read -eu 5 sim_file; do
   #diff -wu "$expect_file" "$sim_file"
   #meld "$expect_file" "$sim_file"
 
-  process_gpx_file <"$expect_file" | grep -v -e '<desc' -e '<gpxtpx:' >"$file_expected"
-  process_gpx_file <"$sim_file"    | grep -v -e '<desc' -e '<gpxtpx:' >"$file_actual"
+  process_gpx_file <"$expect_file" | grep -v -e '<gpxtpx:' >"$file_expected"
+  process_gpx_file <"$sim_file"    | grep -v -e '<gpxtpx:' >"$file_actual"
 
   diff -wu "$file_expected" "$file_actual" || panic "Different output files $sim_file vs $expect_file"
 done

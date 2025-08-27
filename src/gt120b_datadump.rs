@@ -140,10 +140,10 @@ impl Gt120bDataDump {
         self.parse_data(data);
         //       dumpblock_parse(data);
     }
-    pub fn write_out(&mut self) -> Result<usize> {
+    pub fn write_out(&mut self, conf_change_every_day: bool, meta_desc: &String) -> Result<usize> {
         self.waypoints.sort_by(|a, b| a.time().cmp(&b.time()));
 
-        fn start_file(name: &str) -> Result<Option<BufWriter<File>>> {
+        fn start_file(name: &str, meta_desc: &String) -> Result<Option<BufWriter<File>>> {
             println!("Writing gpx file {name}");
             let f = File::create(name)?;
             let mut fbuf = BufWriter::new(f);
@@ -152,7 +152,7 @@ impl Gt120bDataDump {
 <!-- generated using test of rust implementation -->
 <gpx version=\"1.1\" creator=\"igotU_GPS_WIN\" xmlns:gpxx=\"http://www.garmin.com/xmlschemas/GpxExtensions/v3\" xmlns:gpxwpx=\"http://www.garmin.com/xmlschemas/WaypointExtension/v1\" xmlns:gpxtpx=\"http://www.garmin.com/xmlschemas/TrackPointExtension/v2\" xmlns:mat=\"http://www.mobileaction.com/xmlschemas/TrackPointExtension/v2\" xmlns=\"http://www.topografix.com/GPX/1/1\">
   <metadata>
-    <desc>//TODO</desc>
+    <desc>{meta_desc}</desc>
   </metadata>
   <trk>
     <trkseg>")?;
@@ -193,8 +193,6 @@ impl Gt120bDataDump {
         self.transfer_flags_reverse();
         self.transfer_flags_forward();
 
-        let conf_change_every_day = true;
-
         let mut f_ref: Option<BufWriter<File>> = None;
         let mut filenum = 0;
         for wp in &self.waypoints {
@@ -219,7 +217,10 @@ impl Gt120bDataDump {
                 }
                 if f_ref.is_none() {
                     filenum += 1;
-                    f_ref = start_file(&format!("testout-{:02}.gpx", filenum).to_string())?;
+                    f_ref = start_file(
+                        &format!("testout-{:02}.gpx", filenum).to_string(),
+                        meta_desc,
+                    )?;
                     set_daychange(time, &mut lastday);
                 }
                 wp.dump(f_ref.as_mut().expect("at this stage, file is always open"))?;

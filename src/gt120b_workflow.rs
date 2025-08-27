@@ -5,6 +5,8 @@ use crate::commands::{
     cmd_set_time,
 };
 use crate::gt120b_datadump::Gt120bDataDump;
+use base64::Engine;
+use base64::prelude::BASE64_STANDARD;
 
 pub fn workflow(comm: &mut CommBulk, bestreplay: bool, conf_orig_sw_equivalent: bool) {
     // set line coding request - probably not needed
@@ -83,8 +85,11 @@ pub fn workflow(comm: &mut CommBulk, bestreplay: bool, conf_orig_sw_equivalent: 
     }
 
     if let Some(ref mut datadumper) = datadumper_ref {
+        let conf_change_every_day: bool = true;
+        let json_str_compact = serde_json::to_string(&id_struct).unwrap();
+        let meta_desc: String = BASE64_STANDARD.encode(json_str_compact);
         datadumper
-            .write_out()
+            .write_out(conf_change_every_day, &meta_desc)
             .expect("Problem while exporting to gpx files");
     }
 
