@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -ex
+set -o pipefail
 
 if [ ! -f "$1" ]; then
   [ -n "$logdir" ] || logdir=.
@@ -28,7 +29,8 @@ basename="$(dirname "$replayfile")"
 process_gpx_file() {
 python3 -c "
 from math import log10, floor
-from datetime import datetime
+from datetime import datetime # python>=3.11  - datetime.fromisoformat
+import dateutil.parser  # python<3.11  - dateutil.parser.isoparse (needs sudo apt-get install python3-dateutil)
 import fileinput
 import re
 
@@ -42,13 +44,14 @@ def round_floats_in_stream(decimal_places=0):
     time_pattern = r'20\d\d-?.*[\dZ]'
 
     def time_match(match):
-        t = datetime.fromisoformat(match.group())
+        s = match.group()
+        t = dateutil.parser.isoparse(s)  # only python >= 3.11 supports full iso format
         return t.isoformat()
     # Function to round the float numbers
     def round_match(match):
         number = float(match.group())
-        s= str(round_to_sign_digits(number, decimal_places))
-        if s.endswith('.0'): s=s[:-2]
+        s = str(round_to_sign_digits(number, decimal_places))
+        if s.endswith('.0'): s = s[:-2]
         return s
 
     for line in fileinput.input():
