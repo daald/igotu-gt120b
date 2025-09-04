@@ -1,9 +1,10 @@
 use crate::CommBulk;
 use hex_literal::hex;
+use log::debug;
 use serde::{Deserialize, Serialize}; //use: hex!
 
 pub fn cmd_nmea_switch(comm: &mut CommBulk, flag: bool) {
-    println!("Send cmd_nmea_switch");
+    debug!("Send cmd_nmea_switch");
     let mut command: Vec<u8> = hex!["930101"].to_vec();
 
     command.push(if flag { 0x03 } else { 0x00 }); // 120b needs 0x03. 120 needed 0x00 (untested)
@@ -20,7 +21,7 @@ pub enum Model {
 }
 
 pub fn cmd_model(comm: &mut CommBulk) -> Model {
-    println!("Send cmd_model");
+    debug!("Send cmd_model");
     let command: Vec<u8> = hex!["9305040003019f"].to_vec();
 
     let answer = comm.simple_cmd_return(command); //[0x93,0x00,0x03,0xc2,0x20,0x15,0x73].to_vec());
@@ -63,7 +64,7 @@ pub fn cmd_identification(
     comm: &mut CommBulk,
     conf_orig_sw_equivalent: bool,
 ) -> IdentificationJson {
-    println!("Send cmd_identification");
+    debug!("Send cmd_identification");
     let command: Vec<u8> = hex!["930a"].to_vec();
 
     let answer = comm.simple_cmd_return(command);
@@ -123,7 +124,7 @@ fn calculate_offset_from_count(b: u8, c: u8) -> u32 {
 }
 
 pub fn cmd_count(comm: &mut CommBulk) -> u32 {
-    println!("Send cmd_count");
+    debug!("Send cmd_count");
     let command: Vec<u8> = hex!["930b03001d"].to_vec();
 
     let answer = comm.simple_cmd_return(command);
@@ -140,7 +141,7 @@ pub fn cmd_count(comm: &mut CommBulk) -> u32 {
 }
 
 pub fn cmd_set_time(comm: &mut CommBulk, time_us: u64) {
-    println!("Send cmd_set_time");
+    debug!("Send cmd_set_time");
     let mut command: Vec<u8> = hex!["9309"].to_vec();
 
     //let time_us = 1753997870971000_u64;
@@ -153,7 +154,7 @@ pub fn cmd_set_time(comm: &mut CommBulk, time_us: u64) {
 }
 
 pub fn cmd_read(comm: &mut CommBulk, pos: u32, size: u16) -> Vec<u8> {
-    println!("Send cmd_read (size: {size:04x}  pos: {pos:06x}");
+    debug!("Send cmd_read (size: {size:04x}  pos: {pos:06x}");
     let mut command: Vec<u8> = hex!["930507"].to_vec(); //,0,0,0,0,0,0,0];
 
     //    command[3] = (size >> 0x08) & 0xff;
@@ -178,7 +179,7 @@ pub fn cmd_read(comm: &mut CommBulk, pos: u32, size: u16) -> Vec<u8> {
 }
 
 pub fn cmd_delete_reboot(comm: &mut CommBulk) {
-    println!("Send cmd_delete_reboot");
+    debug!("Send cmd_delete_reboot");
     let command: Vec<u8> = hex!["9311020080"].to_vec();
 
     comm.simple_cmd_oneway_devicereset(command);
