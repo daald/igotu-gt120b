@@ -8,7 +8,12 @@ use crate::gt120b_datadump::Gt120bDataDump;
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
 
-pub fn workflow(comm: &mut CommBulk, bestreplay: bool, conf_orig_sw_equivalent: bool) {
+pub fn workflow(
+    comm: &mut CommBulk,
+    bestreplay: bool,
+    conf_clear: bool,
+    conf_orig_sw_equivalent: bool,
+) {
     // set line coding request - probably not needed
     //sync_send_control(handle, 0x21, 0x20 /* set line coding*/, 0, 0, "\x00\xc2\x01\x00\x00\x00\x08", 7, 2000 );
 
@@ -101,8 +106,9 @@ pub fn workflow(comm: &mut CommBulk, bestreplay: bool, conf_orig_sw_equivalent: 
             .expect("Problem while exporting to gpx files");
     }
 
-    if comm.is_real() {
-        panic!("safety stop");
+    if !conf_clear {
+        // stopping here, rest is only for deleting
+        return;
     }
 
     cmd_delete_reboot(comm);

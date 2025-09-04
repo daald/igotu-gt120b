@@ -16,9 +16,9 @@ use clap::Parser;
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
-    /// Use a real device instead of a simulation
+    /// Clear memory of device after successfully downloading and writing gpx files
     #[arg(short, long, default_value_t = false)]
-    real: bool,
+    clear: bool,
 
     /// Number of times to greet
     //#[arg(short, long, default_value_t = 1)]
@@ -36,7 +36,7 @@ struct Args {
     //let replay_file = "src/gt-120b-kvm-sesson-20250603.json.txt";
     /// Filename of simulation replay file
     #[arg(short, long)]
-    sim_file_name: String,
+    sim_file_name: Option<String>,
 }
 
 fn main() {
@@ -46,14 +46,19 @@ fn main() {
 
     //dbg!(&args);
 
-    let intf: Box<dyn Intf> = if args.real {
+    let intf: Box<dyn Intf> = if args.sim_file_name.is_none() {
         Box::new(IntfBulk::new())
     } else {
-        Box::new(IntfFile::new(args.sim_file_name))
+        Box::new(IntfFile::new(args.sim_file_name.unwrap()))
     };
     let mut comm = CommBulk { intf: intf };
 
-    workflow(&mut comm, args.bestreplay, args.orig_sw_equivalent);
+    workflow(
+        &mut comm,
+        args.bestreplay,
+        args.clear,
+        args.orig_sw_equivalent,
+    );
 
-    println!("END");
+    println!("Completed.");
 }

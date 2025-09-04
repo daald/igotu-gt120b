@@ -181,7 +181,6 @@ impl Gt120bDataDump {
         fn need_daychange(time: &DateTime<Utc>, lastday: &mut NaiveDate) -> bool {
             let localdatetime: DateTime<Local> = DateTime::from(*time);
             let day = localdatetime.date_naive();
-            println!(":: {} {}", localdatetime, day);
             if day != *lastday {
                 set_daychange(time, lastday);
                 return true;
