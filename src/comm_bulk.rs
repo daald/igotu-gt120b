@@ -1,10 +1,5 @@
-//use futures_lite::future::block_on;
-//use nusb::transfer::{ RequestBuffer, ControlOut, ControlType, Recipient, Queue };
-//use nusb::{ Device, Interface };
-//use hex_literal::hex;    //use: hex!
-
-//mod intf_bulk;
 use crate::intf::Intf;
+use log::trace;
 
 pub struct CommBulk {
     pub intf: Box<dyn Intf>,
@@ -14,12 +9,12 @@ impl CommBulk {
     pub fn simple_cmd_return(&mut self, to_device_: Vec<u8>) -> Vec<u8> {
         let mut to_device = to_device_.clone();
         pad_and_checksum(&mut to_device);
-        println!("Simple cmd {to_device:02X?}");
+        trace!("Simple cmd {to_device:02X?}");
 
         let answer = self.intf.send_and_receive(to_device);
         //println!("  r={answer:02X?}");
         let payload = verify_answer_checksum_extract_payload(answer);
-        println!("Simple response {payload:02X?}");
+        trace!("Simple response {payload:02X?}");
         return payload;
     }
 
@@ -32,7 +27,7 @@ impl CommBulk {
     pub fn simple_cmd_oneway_devicereset(&mut self, to_device_: Vec<u8>) {
         let mut to_device = to_device_.clone();
         pad_and_checksum(&mut to_device);
-        println!("Simple cmd {to_device:02X?}");
+        trace!("Simple cmd {to_device:02X?}");
 
         self.intf.cmd_oneway_devicereset(to_device);
     }
@@ -78,7 +73,6 @@ fn verify_answer_checksum_extract_payload(answer: Vec<u8>) -> Vec<u8> {
 
 fn check_full_answer(answer: Vec<u8>, expected: Vec<u8>) {
     if answer != expected {
-        panic!("Wrong answer. received {answer:02X?}. expected: {expected:02X?}");
+        panic!("Unexpected answer. received {answer:02X?}. expected: {expected:02X?}");
     }
-    println!("all good")
 }

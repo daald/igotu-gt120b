@@ -1,4 +1,5 @@
 use chrono::{DateTime, Local, NaiveDate, TimeZone, Utc};
+use log::trace;
 use std::fs::File;
 use std::io::{BufWriter, Result, Write};
 
@@ -301,10 +302,10 @@ impl Gt120bDataDump {
         // TODO print offset for verbosity
         let mut pos = 0;
         while pos < data.len() {
-            println!("Received data: {:02X?}", &data[pos..(pos + 8)]);
+            trace!("< {:02X?}", &data[pos..(pos + 8)]);
             pos += 8;
             for _n in 0..4 {
-                println!("Received data: {:02X?}", &data[pos..(pos + 30)]);
+                trace!("< {:02X?}", &data[pos..(pos + 30)]);
                 let wp = parse_datablock(data[pos..(pos + 30)].to_vec());
                 if !matches!(wp, DatablockEnum::NoBlock) {
                     self.waypoints.push(wp);
@@ -328,11 +329,11 @@ fn dumpblock_parse(data: Vec<u8>) {
 
 fn parse_datablock(value: Vec<u8>) -> DatablockEnum {
     if value[0] == 0xff {
-        println!("  (empty data)");
+        // empty data
         return DatablockEnum::NoBlock;
     }
     if value[0] == 0x50 {
-        println!("  (no coordinates)");
+        // block without coordinates
         return DatablockEnum::NoBlock;
     }
 

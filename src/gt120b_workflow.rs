@@ -7,6 +7,7 @@ use crate::commands::{
 use crate::gt120b_datadump::Gt120bDataDump;
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
+use log::trace;
 
 pub fn workflow(
     comm: &mut CommBulk,
@@ -69,8 +70,6 @@ pub fn workflow(
 
     let (end_offset, all_begin_empty) = cmdblock_find_end_offset(comm, id_offset);
 
-    println!("A2");
-
     let mut datadumper = Gt120bDataDump::new();
     let mut datadumper_ref = Some(&mut datadumper);
     let mut offset = 0x1000;
@@ -78,8 +77,7 @@ pub fn workflow(
         cmdblock_read_doublet(comm, offset, &mut datadumper_ref);
         offset += 0x1000;
     }
-    println!("B {id_offset:06x} {end_offset:06x} {offset:06x}");
-    println!("B");
+    trace!("offsets: {id_offset:06x} {end_offset:06x} {offset:06x}");
 
     if !all_begin_empty {
         // result is important in some usecases
@@ -146,8 +144,6 @@ fn cmdblock_find_end_offset(comm: &mut CommBulk, id_offset: u32) -> (u32, bool) 
             }
             i += 1;
         }
-
-        println!("A1");
 
         cmd_read(comm, id_offset + (i - 1) * 0x1000 + 0xf80, 0x080); // from data dump of original software. no clue
     }
