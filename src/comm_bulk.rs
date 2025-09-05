@@ -32,10 +32,6 @@ impl CommBulk {
         self.intf.cmd_oneway_devicereset(to_device);
     }
 
-    pub fn is_real(&self) -> bool {
-        return self.intf.is_real();
-    }
-
     pub fn get_time_micros(&self) -> u64 {
         return self.intf.get_time_micros();
     }

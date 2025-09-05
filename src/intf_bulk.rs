@@ -2,7 +2,6 @@ use futures_lite::future::block_on;
 use nusb::transfer::{ControlOut, ControlType, Queue, Recipient, RequestBuffer};
 use nusb::{Device, Interface};
 use std::time::SystemTime;
-//use hex_literal::hex;    //use: hex!
 
 use crate::intf;
 pub use intf::Intf;
@@ -38,10 +37,6 @@ impl Intf for IntfBulk {
             .unwrap();
 
         println!("  TODO: wait for device reset");
-    }
-
-    fn is_real(&self) -> bool {
-        return true;
     }
 
     fn get_time_micros(&self) -> u64 {

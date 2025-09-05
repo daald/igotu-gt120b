@@ -109,10 +109,6 @@ impl Intf for IntfFile {
         info!("SIMULATOR #{}: Device reset now", out_line.line_num);
     }
 
-    fn is_real(&self) -> bool {
-        return false;
-    }
-
     fn get_time_micros(&self) -> u64 {
         let comment_line = &self.lines[self.next_line].comment;
         let i0 = comment_line.find("us=").unwrap();
