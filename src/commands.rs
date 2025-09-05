@@ -135,7 +135,7 @@ pub fn cmd_count(comm: &mut CommBulk) -> u32 {
 
     let offset = calculate_offset_from_count(answer[1], answer[2]);
 
-    println!("count/offset: {offset}, {offset:06x}");
+    debug!("count/offset: {offset}, {offset:06x}");
 
     return offset;
 }

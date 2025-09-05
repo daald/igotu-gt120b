@@ -347,8 +347,7 @@ fn parse_datablock(value: Vec<u8>) -> DatablockEnum {
 
     // ymd_opt is deprecated, but the recommended with_ymd_and_hms doesn't suppport millis
     let time = Utc
-        .ymd_opt(year as i32, mon as u32, day as u32)
-        .unwrap()
+        .ymd(year as i32, mon as u32, day as u32)
         .and_hms_milli_opt(
             hour as u32,
             mins as u32,

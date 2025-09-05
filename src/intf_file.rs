@@ -1,4 +1,4 @@
-use log::{debug, info, trace};
+use log::{info, trace};
 extern crate chrono;
 use chrono::{TimeZone, Utc};
 use hex;

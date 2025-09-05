@@ -7,7 +7,7 @@ use crate::commands::{
 use crate::gt120b_datadump::Gt120bDataDump;
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
-use log::trace;
+use log::{debug, trace};
 
 pub fn workflow(
     comm: &mut CommBulk,
@@ -165,7 +165,7 @@ fn cmdblock_identify(
     comm: &mut CommBulk,
     conf_orig_sw_equivalent: bool,
 ) -> (Model, u32, IdentificationJson) {
-    println!("In cmdblock_identify()");
+    debug!("cmdblock_identify()");
 
     // NmeaSwitchCommand enable=1
     cmd_nmea_switch(comm, true);
@@ -194,7 +194,7 @@ fn cmdblock_read_doublet(
 ) -> bool {
     let resp1 = cmd_read(comm, pos + 0x000000, 0x0100); // beginning. also used for probing
     if resp1 == vec![0xff; 0x0100] {
-        println!("empty block. skip 2nd read");
+        debug!("empty block. skip 2nd read");
         return false;
     }
 
