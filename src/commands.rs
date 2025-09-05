@@ -49,7 +49,7 @@ pub struct IdentificationJson {
     #[serde(rename = "DeviceID")]
     device_id: String,
     name: String,
-    alias: String,
+    pub alias: String,
     serial_number: String,
     #[serde(rename = "HWVersion")]
     hw_version: String,

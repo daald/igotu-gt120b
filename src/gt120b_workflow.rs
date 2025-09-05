@@ -11,14 +11,14 @@ use log::trace;
 
 pub fn workflow(
     comm: &mut CommBulk,
-    bestreplay: bool,
+    conf_orig_sw_behav: bool,
     conf_clear: bool,
     conf_orig_sw_equivalent: bool,
 ) {
     // set line coding request - probably not needed
     //sync_send_control(handle, 0x21, 0x20 /* set line coding*/, 0, 0, "\x00\xc2\x01\x00\x00\x00\x08", 7, 2000 );
 
-    let (id_model, id_offset, id_struct) = cmdblock_identify(comm, conf_orig_sw_equivalent);
+    let (id_model, id_offset, mut id_struct) = cmdblock_identify(comm, conf_orig_sw_equivalent);
     assert_eq!(id_model, Model::Gt120);
 
     // ./decode-igotu-trace3+120b.py says ReadCommand(pos = 0x1fff80, size = 0x0008) but this is not calculatable with cpp code. I guess another impl from manufacturer
@@ -42,23 +42,29 @@ pub fn workflow(
         panic!("Unknown device state. needs more debugging");
     }
 
-    if bestreplay {
+    if conf_orig_sw_behav {
         // run "./cargo-run.sh --bestreplay" for a complete run of the replay file
+
+        // this block was introduced because the original sw does these calls, and I want to have a 100% identical replay for quality reasons.
+        // but actually, I don't know what is done here and why. maybe it's an artifact of the incremental algorighm of the original software
+        // (if you don't delete your data, already loaed data gets skippt on next read, with the help of a local state storage)
 
         // same again? at least check that the two results are squal
         let offset2 = cmd_count(comm);
         assert_eq!(id_offset, offset2);
-        let read_payload2 = cmd_read(comm, 0x1fff80, 0x0008); // from data dump of original software. no clue what is expected here // TODO force all FFs?
+        let read_payload2 = cmd_read(comm, 0x1fff80, 0x0008); // no clue what is expected here // TODO force all FFs?
         assert_eq!(id_read, read_payload2);
     }
 
     let name_config_response = cmd_read(comm, 0x000000, 0x00ea); // from data dump of original software. no clue why these offsets/sizes, but it seems to contain name and maybe config
     {
         let name = String::from_utf8_lossy(&name_config_response[16..132]); // TODO very likely the wrong charset
-        let name2 = name.trim_end_matches('\0');
-        println!("NAME: <{name2}> {}", name2.len());
+        let name = name.trim_end_matches('\0');
+        println!("NAME: <{name}> {}", name.len());
+        id_struct.alias = name.to_string();
         //TODO there are some other values in this response:
         //< 10:0e
+        //< 19:00:38:00:07:00:00:02
         //< f0:a0:90:65:76:7b:91:65
         //< 01:d8:ff:04:01:06:09:21:20:f5
     }
@@ -97,8 +103,12 @@ pub fn workflow(
 
     if let Some(ref mut datadumper) = datadumper_ref {
         let conf_change_every_day: bool = true;
-        let json_str_compact = serde_json::to_string(&id_struct).unwrap();
-        let meta_desc: String = BASE64_STANDARD.encode(json_str_compact);
+        let meta_desc = if conf_orig_sw_behav {
+            let json_str_compact = serde_json::to_string(&id_struct).unwrap();
+            BASE64_STANDARD.encode(json_str_compact)
+        } else {
+            serde_json::to_string(&id_struct).unwrap() // TODO formatted output
+        };
         datadumper
             .write_out(conf_change_every_day, &meta_desc)
             .expect("Problem while exporting to gpx files");
@@ -111,11 +121,12 @@ pub fn workflow(
 
     cmd_delete_reboot(comm);
 
-    // here: device reboots itself without returning an answer
+    // here: device reboots itself without returning an answer. not that it will disconnect and needs to be reconnected afterwards for making sure the delete was successful
 
     let (id2_model, _id2_offset, id2_struct) = cmdblock_identify(comm, conf_orig_sw_equivalent);
     // check everything except offset
     assert_eq!(id_model, id2_model);
+    id_struct.alias = id2_struct.alias.clone(); // fix value for comparing in the following line
     assert_eq!(id_struct, id2_struct);
 
     let payload = cmd_read(comm, 0x1fff80, 0x0008); // from data dump of original software. no clue what is expected here // TODO force all FFs?
