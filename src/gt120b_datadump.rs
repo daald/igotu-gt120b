@@ -1,4 +1,4 @@
-use chrono::{DateTime, Local, NaiveDate, TimeZone, Utc};
+use chrono::{DateTime, Local, NaiveDate, Utc};
 use log::trace;
 use std::fs::File;
 use std::io::{BufWriter, Result, Write};
@@ -338,23 +338,20 @@ fn parse_datablock(value: Vec<u8>) -> DatablockEnum {
     }
 
     let ymd = u32::from_be_bytes(value[2..6].try_into().unwrap());
-    let secs = u16::from_le_bytes(value[6..8].try_into().unwrap());
-    let mins = (ymd & 0x3f) as u8;
-    let hour = (ymd >> 6 & 0x1f) as u8;
-    let day = (ymd >> 11 & 0x1f) as u8;
-    let mon = (ymd >> 16 & 0xf) as u8;
-    let year = 2000 + value[2] as u16;
+    let fullmsecs = u16::from_le_bytes(value[6..8].try_into().unwrap()) as u32;
+    let secs = fullmsecs / 1000;
+    let msecs = fullmsecs % 1000;
+    let mins = ymd & 0x3f;
+    let hour = ymd >> 6 & 0x1f;
+    let day = ymd >> 11 & 0x1f;
+    let mon = ymd >> 16 & 0xf;
+    let year = 2000 + value[2] as i32;
 
-    // ymd_opt is deprecated, but the recommended with_ymd_and_hms doesn't suppport millis
-    let time = Utc
-        .ymd(year as i32, mon as u32, day as u32)
-        .and_hms_milli_opt(
-            hour as u32,
-            mins as u32,
-            (secs / 1000) as u32,
-            (secs % 1000) as u32,
-        )
-        .unwrap();
+    let time = NaiveDate::from_ymd_opt(year, mon, day)
+        .unwrap()
+        .and_hms_milli_opt(hour, mins, secs, msecs)
+        .unwrap()
+        .and_utc();
 
     if value[0] == 0x41 {
         // new track, no geo
