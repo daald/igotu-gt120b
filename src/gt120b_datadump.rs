@@ -123,8 +123,6 @@ impl DatablockEnum {
 }
 
 pub struct Gt120bDataDump {
-    //device: Device,
-    //interface: Interface,
     waypoints: Vec<DatablockEnum>,
 }
 
@@ -139,7 +137,6 @@ impl Gt120bDataDump {
         let structsize = 8 + 4 * 30;
         assert_eq!(0, data.len() % structsize);
         self.parse_data(data);
-        //       dumpblock_parse(data);
     }
     pub fn write_out(&mut self, conf_change_every_day: bool, meta_desc: &String) -> Result<usize> {
         self.waypoints.sort_by(|a, b| a.time().cmp(&b.time()));
