@@ -56,18 +56,7 @@ pub fn workflow(
         assert_eq!(id_read, read_payload2);
     }
 
-    let name_config_response = cmd_read(comm, 0x000000, 0x00ea); // from data dump of original software. no clue why these offsets/sizes, but it seems to contain name and maybe config
-    {
-        let name = String::from_utf8_lossy(&name_config_response[16..132]); // TODO very likely the wrong charset
-        let name = name.trim_end_matches('\0');
-        println!("NAME: <{name}> {}", name.len());
-        id_struct.alias = name.to_string();
-        //TODO there are some other values in this response:
-        //< 10:0e
-        //< 19:00:38:00:07:00:00:02
-        //< f0:a0:90:65:76:7b:91:65
-        //< 01:d8:ff:04:01:06:09:21:20:f5
-    }
+    cmdblock_readconfig(comm, &mut id_struct);
 
     {
         let offset = cmd_count(comm);
@@ -137,6 +126,26 @@ pub fn workflow(
 
     let time_us = comm.get_time_micros();
     cmd_set_time(comm, time_us); //  1753997893134000u64
+}
+
+fn cmdblock_readconfig(comm: &mut CommBulk, id_struct: &mut IdentificationJson) {
+    let name_config_response = cmd_read(comm, 0x000000, 0x00ea);
+
+    let name = String::from_utf8_lossy(&name_config_response[16..48]); // is utf-8
+    let name = name.trim_end_matches('\0');
+    id_struct.alias = name.to_string();
+    println!("NAME: <{name}> {}", name.len());
+    println!("< {name_config_response:X?}");
+    println!("normal interval: {}s", name_config_response[4]);
+    println!(
+        "smart tracking after {}kmh: {}s",
+        name_config_response[2/*or 11*/], name_config_response[8]
+    );
+    //TODO there are some other values in this response:
+    //< 10:0e
+    //< 19:00:38:00:07:00:00:02
+    //< f0:a0:90:65:76:7b:91:65
+    //< 01:d8:ff:04:01:06:09:21:20:f5
 }
 
 fn cmdblock_find_end_offset(comm: &mut CommBulk, id_offset: u32) -> (u32, bool) {
