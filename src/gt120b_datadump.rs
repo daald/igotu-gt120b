@@ -215,7 +215,7 @@ impl Gt120bDataDump {
                 if f_ref.is_none() {
                     filenum += 1;
                     f_ref = start_file(
-                        &format!("testout-{:02}.gpx", filenum).to_string(),
+                        &format!("testout-{}.gpx", time.format("%Y-%m-%d_%H-%M")).to_string(),
                         meta_desc,
                     )?;
                     set_daychange(time, &mut lastday);
