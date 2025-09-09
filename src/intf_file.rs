@@ -1,4 +1,4 @@
-use log::{info, trace};
+use log::{debug, info, trace};
 extern crate chrono;
 use chrono::{TimeZone, Utc};
 use hex;
@@ -61,9 +61,9 @@ impl IntfFile {
         let out_line = &self.lines[self.next_line];
         self.next_line += 1;
         if !out_line.comment.is_empty() {
-            info!("SIMULATOR >#{}: {}", out_line.line_num, out_line.comment);
+            debug!("SIMULATOR >#{}: {}", out_line.line_num, out_line.comment);
         } else {
-            info!("SIMULATOR >#{}", out_line.line_num);
+            debug!("SIMULATOR >#{}", out_line.line_num);
         }
         if !out_line.out {
             panic!("SIMULATOR >#{}: No cmd-line", out_line.line_num);
@@ -85,9 +85,9 @@ impl Intf for IntfFile {
         let in_line = &self.lines[self.next_line];
         self.next_line += 1;
         if !in_line.comment.is_empty() {
-            info!("SIMULATOR <#{}: {}", in_line.line_num, in_line.comment);
+            debug!("SIMULATOR <#{}: {}", in_line.line_num, in_line.comment);
         } else {
-            info!("SIMULATOR <#{}", in_line.line_num);
+            debug!("SIMULATOR <#{}", in_line.line_num);
         }
         if in_line.out {
             panic!("SIMULATOR <#{}: Not a response in line", in_line.line_num);
@@ -97,7 +97,7 @@ impl Intf for IntfFile {
             let in_line = &self.lines[self.next_line];
             self.next_line += 1;
             if !in_line.comment.is_empty() {
-                info!("SIMULATOR <+#{}: {}", in_line.line_num, in_line.comment);
+                debug!("SIMULATOR <+#{}: {}", in_line.line_num, in_line.comment);
             }
             line.append(&mut in_line.line.to_vec());
         }
@@ -106,7 +106,7 @@ impl Intf for IntfFile {
 
     fn cmd_oneway_devicereset(&mut self, to_device: Vec<u8>) {
         let out_line = self.sim_send(to_device);
-        info!("SIMULATOR #{}: Device reset now", out_line.line_num);
+        debug!("SIMULATOR #{}: Device reset now", out_line.line_num);
     }
 
     fn get_time_micros(&self) -> u64 {
@@ -116,7 +116,7 @@ impl Intf for IntfFile {
         let i1 = line2.find(")").unwrap();
         let time_us = line2[0..i1].parse::<u64>().unwrap();
         let dt = Utc.timestamp_micros(time_us.try_into().unwrap());
-        info!(
+        debug!(
             "SIMULATOR: dummy time: us={}, {}",
             time_us,
             dt.single().unwrap().to_rfc2822()

@@ -1,5 +1,5 @@
 use chrono::{DateTime, Local, NaiveDate, Utc};
-use log::trace;
+use log::{info, trace};
 use std::fs::File;
 use std::io::{BufWriter, Result, Write};
 
@@ -142,7 +142,7 @@ impl Gt120bDataDump {
         self.waypoints.sort_by(|a, b| a.time().cmp(&b.time()));
 
         fn start_file(name: &str, meta_desc: &String) -> Result<Option<BufWriter<File>>> {
-            println!("Writing gpx file {name}");
+            info!("Writing gpx file {name}");
             let f = File::create(name)?;
             let mut fbuf = BufWriter::new(f);
             assert!(fbuf.capacity() > 0);
@@ -232,7 +232,7 @@ impl Gt120bDataDump {
         if f_ref.is_some() {
             end_file(f_ref)?;
         }
-        println!("Exported {filenum} files");
+        info!("Exported {filenum} files");
         Ok(filenum)
     }
 

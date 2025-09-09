@@ -7,7 +7,7 @@ use crate::commands::{
 use crate::gt120b_datadump::Gt120bDataDump;
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
-use log::{debug, trace};
+use log::{debug, info, trace};
 
 pub fn workflow(
     comm: &mut CommBulk,
@@ -21,39 +21,26 @@ pub fn workflow(
     let (id_model, id_offset, mut id_struct) = cmdblock_identify(comm, conf_orig_sw_equivalent);
     assert_eq!(id_model, Model::Gt120);
 
-    // ./decode-igotu-trace3+120b.py says ReadCommand(pos = 0x1fff80, size = 0x0008) but this is not calculatable with cpp code. I guess another impl from manufacturer
-    // 3411	55.575353	host	3.8.1	USB	80	URB_BULK out	930b03001d0000000000000000000042	16		CountCommand
-    // 3413	55.575584	3.8.1	host	USB	71	URB_BULK in		930003000b8bd4	7
-    //
-    // 3415	55.578453	host	3.8.1	USB	80	URB_BULK out	930507000804031fff800000000000b4	16		ReadCommand (pos, size)
-    // 3417	55.578739	3.8.1	host	USB	76	URB_BULK in		930008ffffffffffffffff6d	12
-
-    let id_read = cmd_read(comm, 0x1fff80, 0x0008); // from data dump of original software. no clue what is expected here // TODO force all FFs?
-
-    if id_read.len() == 8 && id_read == vec![0xff; 8] {
-        // TODO set something. it's the time in epoc in both [s] and [us], but for what reason?  --   usb.capdata[0] == 0x93 and usb.capdata[1] == 0x09
+    let read8_payload = cmd_read(comm, 0x1fff80, 0x0008); // from data dump of original software. no clue what is expected here // TODO force all FFs?
+    if read8_payload.len() == 8 && read8_payload == vec![0xff; 8] {
+        // I don't really know why the time is sent here, but the original sw does too
         let time_us = comm.get_time_micros();
         cmd_set_time(comm, time_us); //  1753997870971000_u64
-
-    //> 93:09:20:cd:d6:3d:9e:36:06:00:da:24:3e:68:00:e6  or 93:09:b0:cd:7f:a0:39360600d28c37680056
-    //< 93:00:00:6d
     } else {
-        // possibly this non-empty information is important. maybe a bad block list? fortunately or unfortunately, I've never seen this
-        panic!("Unknown device state. needs more debugging");
+        // possibly this non-empty information is important. maybe a bad block list? fortunately or unfortunately, I've never seen this case
+        panic!("Unknown device state. needs more debugging/development");
     }
 
     if conf_orig_sw_behav {
-        // run "./cargo-run.sh --bestreplay" for a complete run of the replay file
-
         // this block was introduced because the original sw does these calls, and I want to have a 100% identical replay for quality reasons.
         // but actually, I don't know what is done here and why. maybe it's an artifact of the incremental algorighm of the original software
-        // (if you don't delete your data, already loaed data gets skippt on next read, with the help of a local state storage)
+        // (if you don't delete your data, already loaded data get skipped on next read, with the help of a local state storage)
 
-        // same again? at least check that the two results are squal
+        // we don't know what to do, but at least check that the results match to what was before
         let offset2 = cmd_count(comm);
         assert_eq!(id_offset, offset2);
-        let read_payload2 = cmd_read(comm, 0x1fff80, 0x0008); // no clue what is expected here // TODO force all FFs?
-        assert_eq!(id_read, read_payload2);
+        let read8_payload2 = cmd_read(comm, 0x1fff80, 0x0008);
+        assert_eq!(read8_payload, read8_payload2);
     }
 
     cmdblock_readconfig(comm, &mut id_struct);
@@ -65,6 +52,7 @@ pub fn workflow(
 
     let (end_offset, all_begin_empty) = cmdblock_find_end_offset(comm, id_offset);
 
+    info!("Start downloading data");
     let mut datadumper = Gt120bDataDump::new();
     let mut datadumper_ref = Some(&mut datadumper);
     let mut offset = 0x1000;
@@ -90,6 +78,7 @@ pub fn workflow(
         }
     }
 
+    info!("Dumping to GPX");
     if let Some(ref mut datadumper) = datadumper_ref {
         let conf_change_every_day: bool = true;
         let meta_desc = if conf_orig_sw_behav {
@@ -108,9 +97,11 @@ pub fn workflow(
         return;
     }
 
+    info!("Delete device data");
     cmd_delete_reboot(comm);
 
     // here: device reboots itself without returning an answer. not that it will disconnect and needs to be reconnected afterwards for making sure the delete was successful
+    info!("Waiting for device reconnect");
 
     let (id2_model, _id2_offset, id2_struct) = cmdblock_identify(comm, conf_orig_sw_equivalent);
     // check everything except offset

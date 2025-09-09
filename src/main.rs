@@ -1,3 +1,5 @@
+use env_logger::Builder;
+use env_logger::Env;
 mod comm_bulk;
 mod commands;
 mod gt120b_datadump;
@@ -42,7 +44,8 @@ struct Args {
 fn main() {
     let args = Args::parse();
 
-    env_logger::init();
+    let env = Env::new().filter_or("RUST_LOG", "info");
+    Builder::from_env(env).init();
 
     //dbg!(&args);
 
