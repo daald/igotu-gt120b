@@ -1,4 +1,5 @@
 use futures_lite::future::block_on;
+use log::trace;
 use nusb::transfer::{ControlOut, ControlType, Queue, Recipient, RequestBuffer};
 use nusb::{Device, Interface};
 use std::time::SystemTime;
@@ -19,15 +20,21 @@ pub struct IntfBulk {
 
 impl Intf for IntfBulk {
     fn send_and_receive(&mut self, to_device: Vec<u8>) -> Vec<u8> {
-        let queue = self.interface.bulk_in_queue(BULK_EP_IN);
+        let mut queue = self.interface.bulk_in_queue(BULK_EP_IN);
 
         block_on(self.interface.bulk_out(BULK_EP_OUT, to_device))
             .into_result()
             .unwrap();
 
         println!("  awaiting answer");
-        let answer = self.read_answer(queue);
-        // TODO close queue
+        let mut answer = self.read_answer(&mut queue);
+
+        let payloadsize: u16 = u16::from_be_bytes(answer[1..3].try_into().unwrap());
+        while answer.len() < payloadsize as usize + 4 {
+            trace!("  waiting for more data");
+            answer.append(&mut self.read_answer(&mut queue));
+        }
+
         return answer;
     }
 
@@ -71,7 +78,7 @@ impl IntfBulk {
         return self_;
     }
 
-    fn read_answer(&mut self, mut in_queue: Queue<RequestBuffer>) -> Vec<u8> {
+    fn read_answer(&mut self, in_queue: &mut Queue<RequestBuffer>) -> Vec<u8> {
         loop {
             while in_queue.pending() < 8 {
                 in_queue.submit(RequestBuffer::new(256));
