@@ -12,7 +12,6 @@ impl CommBulk {
         trace!("Simple cmd {to_device:02X?}");
 
         let answer = self.intf.send_and_receive(to_device);
-        //println!("  r={answer:02X?}");
         let payload = verify_answer_checksum_extract_payload(answer);
         trace!("Simple response {payload:02X?}");
         return payload;
