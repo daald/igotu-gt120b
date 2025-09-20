@@ -3,9 +3,17 @@ use log::trace;
 
 pub struct CommBulk {
     pub intf: Box<dyn Intf>,
+    is_first_command: bool,
 }
 
 impl CommBulk {
+    pub fn new(intf: Box<dyn Intf>) -> Self {
+        CommBulk {
+            intf: intf,
+            is_first_command: true,
+        }
+    }
+
     pub fn simple_cmd_return(&mut self, to_device_: Vec<u8>) -> Vec<u8> {
         let mut to_device = to_device_.clone();
         pad_and_checksum(&mut to_device);
@@ -20,7 +28,7 @@ impl CommBulk {
     pub fn simple_cmd_eqresult(&mut self, to_device: Vec<u8>, expect_from_device: Vec<u8>) {
         let answer = self.simple_cmd_return(to_device);
         //println!("  r={answer:02X?}");
-        check_full_answer(answer, expect_from_device);
+        self.check_full_answer(answer, expect_from_device);
     }
 
     pub fn simple_cmd_oneway_devicereset(&mut self, to_device_: Vec<u8>) {
@@ -32,7 +40,21 @@ impl CommBulk {
     }
 
     pub fn get_time_micros(&self) -> u64 {
-        return self.intf.get_time_micros();
+        self.intf.get_time_micros()
+    }
+
+    fn check_full_answer(&mut self, answer: Vec<u8>, expected: Vec<u8>) {
+        if answer != expected {
+            let err_extra_msg = if self.is_first_command {
+                ". As this was the first command, it's possible this was caused by a previous session error on the same device. In this case, try to re-run."
+            } else {
+                ""
+            };
+            panic!(
+                "Unexpected answer. received {answer:02X?}. expected: {expected:02X?}{err_extra_msg}"
+            );
+        }
+        self.is_first_command = false;
     }
 }
 
@@ -63,11 +85,6 @@ fn verify_answer_checksum_extract_payload(answer: Vec<u8>) -> Vec<u8> {
             answer.len() - 4
         );
     }
-    return answer[3..(answer.len() - 1)].to_vec();
-}
 
-fn check_full_answer(answer: Vec<u8>, expected: Vec<u8>) {
-    if answer != expected {
-        panic!("Unexpected answer. received {answer:02X?}. expected: {expected:02X?}");
-    }
+    return answer[3..(answer.len() - 1)].to_vec();
 }

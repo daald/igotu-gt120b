@@ -54,7 +54,7 @@ fn main() {
     } else {
         Box::new(IntfFile::new(args.sim_file_name.unwrap()))
     };
-    let mut comm = CommBulk { intf: intf };
+    let mut comm = CommBulk::new(intf);
 
     workflow(
         &mut comm,
