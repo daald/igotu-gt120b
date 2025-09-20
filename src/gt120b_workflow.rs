@@ -127,9 +127,9 @@ fn cmdblock_readconfig(comm: &mut CommBulk, id_struct: &mut IdentificationJson) 
     id_struct.alias = name.to_string();
     println!("NAME: <{name}> {}", name.len());
     println!("< {name_config_response:X?}");
-    println!("normal interval: {}s", name_config_response[4]);
+    println!("CONFIG: normal interval: {}s", name_config_response[4]);
     println!(
-        "smart tracking after {}kmh: {}s",
+        "CONFIG: smart tracking after {}kmh: {}s",
         name_config_response[2/*or 11*/], name_config_response[8]
     );
     //TODO there are some other values in this response:

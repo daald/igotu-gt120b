@@ -1,5 +1,5 @@
 use futures_lite::future::block_on;
-use log::trace;
+use log::{info, trace};
 use nusb::transfer::{ControlOut, ControlType, Queue, Recipient, RequestBuffer};
 use nusb::{Device, Interface};
 use std::time::SystemTime;
@@ -26,7 +26,7 @@ impl Intf for IntfBulk {
             .into_result()
             .unwrap();
 
-        println!("  awaiting answer");
+        trace!("  awaiting answer");
         let mut answer = self.read_answer(&mut queue);
 
         let payloadsize: u16 = u16::from_be_bytes(answer[1..3].try_into().unwrap());
@@ -43,7 +43,7 @@ impl Intf for IntfBulk {
             .into_result()
             .unwrap();
 
-        println!("  TODO: wait for device reset");
+        info!("  TODO: wait for device reset");
     }
 
     fn get_time_micros(&self) -> u64 {
@@ -62,7 +62,7 @@ impl IntfBulk {
             .find(|d| d.vendor_id() == DEVID_VENDOR && d.product_id() == DEVID_PRODUCT)
             .expect("Cannot find device");
 
-        println!("Device info: {di:?}");
+        info!("USB Device info: {di:?}");
 
         let device = di.open().unwrap();
         let interface = device.detach_and_claim_interface(DEVICE_INTERFACE).unwrap();
@@ -84,15 +84,8 @@ impl IntfBulk {
                 in_queue.submit(RequestBuffer::new(256));
             }
             let result = block_on(in_queue.next_complete());
-            println!("  r:{result:02X?}");
-            // r:Completion { data: [147, 0, 0, 109], status: Ok(()) }
-            //    if (memcmp(combuf_in, "\x93\x00\x00\x6d", 4) == 0) {
-            //        printf("received success\n");
 
-            if result.status.is_err() {
-                panic!("error result");
-                //break;
-            }
+            result.status.expect("Error while reading from USB");
 
             return result.data;
         }
