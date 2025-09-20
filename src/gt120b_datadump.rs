@@ -84,23 +84,6 @@ impl DatablockEnum {
             _ => false,
         }
     }
-    pub fn is_datapoint(&self) -> bool {
-        match self {
-            DatablockEnum::Datablock {
-                time: _,
-                wpflags: _,
-                sat_used: _,
-                sat_visib: _,
-                course: _,
-                speed: _,
-                hdop: _,
-                ele: _,
-                lat: _,
-                lon: _,
-            } => true,
-            _ => false,
-        }
-    }
     pub fn time(&self) -> DateTime<Utc> {
         match self {
             DatablockEnum::Datablock {
@@ -309,17 +292,6 @@ impl Gt120bDataDump {
                 }
                 pos += 30;
             }
-        }
-    }
-}
-fn dumpblock_parse(data: Vec<u8>) {
-    // TODO print offset for verbosity
-    let mut pos = 0;
-    while pos < data.len() {
-        pos += 8;
-        for _n in 0..4 {
-            parse_datablock(data[pos..(pos + 30)].to_vec());
-            pos += 30;
         }
     }
 }
