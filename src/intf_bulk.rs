@@ -1,8 +1,9 @@
 use futures_lite::future::block_on;
 use log::{info, trace};
 use nusb::transfer::{ControlOut, ControlType, Queue, Recipient, RequestBuffer};
-use nusb::{Device, Interface};
+use nusb::{Device, DeviceInfo, Interface};
 use std::time::SystemTime;
+use std::{thread, time};
 
 use crate::intf;
 pub use intf::Intf;
@@ -44,6 +45,10 @@ impl Intf for IntfBulk {
             .unwrap();
 
         info!("  TODO: wait for device reset");
+        // TODO, maybe with nusb 0.2: try to make sure the new device is on the same path
+        let (device, interface) = Self::setup_device_and_interface(true);
+        self.device = device;
+        self.interface = interface;
     }
 
     fn get_time_micros(&self) -> u64 {
@@ -57,25 +62,50 @@ impl Intf for IntfBulk {
 
 impl IntfBulk {
     pub fn new() -> Self {
-        let di = nusb::list_devices()
-            .unwrap()
-            .find(|d| d.vendor_id() == DEVID_VENDOR && d.product_id() == DEVID_PRODUCT)
-            .expect("Cannot find device");
+        let (device, interface) = Self::setup_device_and_interface(false);
+        Self {
+            device: device,
+            interface: interface,
+        }
+    }
+
+    fn wait_for_deviceinfo(wait: bool) -> DeviceInfo {
+        let mut sleep_time = 1000;
+        loop {
+            let di_opt = nusb::list_devices()
+                .unwrap()
+                .find(|d| d.vendor_id() == DEVID_VENDOR && d.product_id() == DEVID_PRODUCT);
+
+            if di_opt.is_some() {
+                return di_opt.unwrap();
+            }
+            if wait {
+                thread::sleep(time::Duration::from_millis(sleep_time));
+                if sleep_time > 3000 {
+                    info!("Still waiting for device to reconnect after reboot");
+                    sleep_time = 3000;
+                } else if sleep_time < 3000 {
+                    sleep_time = sleep_time * 3 / 2;
+                }
+            } else {
+                panic!("Cannot find device");
+            }
+        }
+    }
+
+    fn setup_device_and_interface(wait: bool) -> (Device, Interface) {
+        let di = Self::wait_for_deviceinfo(wait);
 
         info!("USB Device info: {di:?}");
 
-        let device = di.open().unwrap();
+        let mut device = di.open().unwrap();
         let interface = device.detach_and_claim_interface(DEVICE_INTERFACE).unwrap();
 
         // set control line state request - needed for the device to reply in BULK mode
         //device.control_out_blocking(handle, 0x21, 0x22 /* set line state*/, 3, 0, NULL, 0, 2000);
 
-        let mut self_ = Self {
-            device: device,
-            interface: interface,
-        };
-        self_.ctrl_set_line_state();
-        return self_;
+        Self::ctrl_set_line_state(&mut device);
+        return (device, interface);
     }
 
     fn read_answer(&mut self, in_queue: &mut Queue<RequestBuffer>) -> Vec<u8> {
@@ -91,9 +121,9 @@ impl IntfBulk {
         }
     }
 
-    fn ctrl_set_line_state(&mut self) {
+    fn ctrl_set_line_state(device: &mut Device) {
         println!("Send ctrl_set_line_state");
-        block_on(self.device.control_out(ControlOut {
+        block_on(device.control_out(ControlOut {
             control_type: ControlType::Class,
             recipient: Recipient::Device,
             request: 0x22, /* set line state*/

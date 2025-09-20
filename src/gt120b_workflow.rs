@@ -87,9 +87,13 @@ pub fn workflow(
         } else {
             serde_json::to_string(&id_struct).unwrap() // TODO formatted output
         };
-        datadumper
+        let num_files = datadumper
             .write_out(conf_change_every_day, &meta_desc)
             .expect("Problem while exporting to gpx files");
+        if num_files == 0 {
+            // stopping here, there was nothing saved, so there's nothing to delete
+            return;
+        }
     }
 
     if !conf_clear {
