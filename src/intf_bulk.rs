@@ -17,6 +17,8 @@ const BULK_EP_OUT: u8 = 0x01;
 pub struct IntfBulk {
     device: Device,
     interface: Interface,
+    bus_id: u8,
+    device_id: u8,
 }
 
 impl Intf for IntfBulk {
@@ -46,9 +48,12 @@ impl Intf for IntfBulk {
 
         info!("  TODO: wait for device reset");
         // TODO, maybe with nusb 0.2: try to make sure the new device is on the same path
-        let (device, interface) = Self::setup_device_and_interface(true);
+        let (device, device_info, interface) =
+            Self::setup_device_and_interface(true, self.bus_id, self.device_id);
         self.device = device;
         self.interface = interface;
+        self.bus_id = device_info.bus_number();
+        self.device_id = device_info.device_address();
     }
 
     fn get_time_micros(&self) -> u64 {
@@ -62,19 +67,23 @@ impl Intf for IntfBulk {
 
 impl IntfBulk {
     pub fn new() -> Self {
-        let (device, interface) = Self::setup_device_and_interface(false);
+        let (device, device_info, interface) = Self::setup_device_and_interface(false, 0xff, 0xff);
         Self {
             device: device,
             interface: interface,
+            bus_id: device_info.bus_number(),
+            device_id: device_info.device_address(),
         }
     }
 
-    fn wait_for_deviceinfo(wait: bool) -> DeviceInfo {
+    fn wait_for_deviceinfo(wait: bool, bus_id: u8, device_id: u8) -> DeviceInfo {
         let mut sleep_time = 1000;
         loop {
-            let di_opt = nusb::list_devices()
-                .unwrap()
-                .find(|d| d.vendor_id() == DEVID_VENDOR && d.product_id() == DEVID_PRODUCT);
+            let di_opt = nusb::list_devices().unwrap().find(|d| {
+                d.vendor_id() == DEVID_VENDOR
+                    && d.product_id() == DEVID_PRODUCT
+                    && match_partially_last_device(&d, bus_id, device_id)
+            });
 
             if di_opt.is_some() {
                 return di_opt.unwrap();
@@ -93,8 +102,12 @@ impl IntfBulk {
         }
     }
 
-    fn setup_device_and_interface(wait: bool) -> (Device, Interface) {
-        let di = Self::wait_for_deviceinfo(wait);
+    fn setup_device_and_interface(
+        wait: bool,
+        bus_id: u8,
+        device_id: u8,
+    ) -> (Device, DeviceInfo, Interface) {
+        let di = Self::wait_for_deviceinfo(wait, bus_id, device_id);
 
         info!("USB Device info: {di:?}");
 
@@ -105,7 +118,7 @@ impl IntfBulk {
         //device.control_out_blocking(handle, 0x21, 0x22 /* set line state*/, 3, 0, NULL, 0, 2000);
 
         Self::ctrl_set_line_state(&mut device);
-        return (device, interface);
+        return (device, di, interface);
     }
 
     fn read_answer(&mut self, in_queue: &mut Queue<RequestBuffer>) -> Vec<u8> {
@@ -134,4 +147,15 @@ impl IntfBulk {
         .into_result()
         .unwrap();
     }
+}
+
+/**
+Find a device which is NOT the same deviceid but on the same bus. This is the way the device reconnects to our system
+*/
+fn match_partially_last_device(devicepath: &DeviceInfo, bus_id: u8, device_id: u8) -> bool {
+    if bus_id == 0xff {
+        // no filter
+        return true;
+    }
+    devicepath.bus_number() == bus_id && devicepath.device_address() != device_id
 }
