@@ -134,7 +134,7 @@ fn cmdblock_readconfig(comm: &mut CommBulk, id_struct: &mut IdentificationJson) 
     println!("< {name_config_response:X?}");
     println!("CONFIG: normal interval: {}s", name_config_response[4]);
     println!(
-        "CONFIG: smart tracking after {}kmh: {}s",
+        "CONFIG: smart tracking above {}kmh: {}s",
         name_config_response[2/*or 11*/], name_config_response[8]
     );
     //TODO there are some other values in this response:
@@ -177,7 +177,7 @@ fn cmdblock_identify(
 
     // ModelCommand
     let model = cmd_model(comm);
-    println!("Model: {model}"); //TODO return
+    println!("Model: {model}");
 
     // IdentificationCommand
     let id_struct = cmd_identification(comm, conf_orig_sw_equivalent);
@@ -185,7 +185,6 @@ fn cmdblock_identify(
     // CountCommand
     let offset = cmd_count(comm);
 
-    //TODO return all identification results
     return (model, offset, id_struct);
 }
 
@@ -199,7 +198,7 @@ fn cmdblock_read_doublet(
 ) -> bool {
     let resp1 = cmd_read(comm, pos + 0x000000, 0x0100); // beginning. also used for probing
     if resp1 == vec![0xff; 0x0100] {
-        debug!("empty block. skip 2nd read");
+        trace!("empty block. skip 2nd read");
         return false;
     }
 

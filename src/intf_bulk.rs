@@ -46,8 +46,7 @@ impl Intf for IntfBulk {
             .into_result()
             .unwrap();
 
-        info!("  TODO: wait for device reset");
-        // TODO, maybe with nusb 0.2: try to make sure the new device is on the same path
+        info!("Wait for device reset. It will shortly disconnect from USB");
         let (device, device_info, interface) =
             Self::setup_device_and_interface(true, self.bus_id, self.device_id);
         self.device = device;
@@ -114,9 +113,6 @@ impl IntfBulk {
         let mut device = di.open().unwrap();
         let interface = device.detach_and_claim_interface(DEVICE_INTERFACE).unwrap();
 
-        // set control line state request - needed for the device to reply in BULK mode
-        //device.control_out_blocking(handle, 0x21, 0x22 /* set line state*/, 3, 0, NULL, 0, 2000);
-
         Self::ctrl_set_line_state(&mut device);
         return (device, di, interface);
     }
@@ -134,6 +130,9 @@ impl IntfBulk {
         }
     }
 
+    /**
+     set control line state request - needed for the device to reply in BULK mode
+    */
     fn ctrl_set_line_state(device: &mut Device) {
         println!("Send ctrl_set_line_state");
         block_on(device.control_out(ControlOut {
