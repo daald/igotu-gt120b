@@ -14,7 +14,6 @@ use crate::intf_bulk::IntfBulk;
 use crate::intf_file::IntfFile;
 use clap::Parser;
 
-/// Simple program to greet a person
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
@@ -33,9 +32,6 @@ struct Args {
     #[arg(long, default_value_t = true)]
     orig_sw_equivalent: bool,
 
-    //let replay_file = "src/replay-120b.txt";
-    //let replay_file = "src/gt-120b-kvm-sesson-20250529.json.txt";
-    //let replay_file = "src/gt-120b-kvm-sesson-20250603.json.txt";
     /// Filename of simulation replay file
     #[arg(short, long)]
     sim_file_name: Option<String>,

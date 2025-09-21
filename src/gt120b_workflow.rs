@@ -79,6 +79,7 @@ pub fn workflow(
     }
 
     info!("Dumping to GPX");
+
     if let Some(ref mut datadumper) = datadumper_ref {
         let conf_change_every_day: bool = true;
         let meta_desc = if conf_orig_sw_behav {
