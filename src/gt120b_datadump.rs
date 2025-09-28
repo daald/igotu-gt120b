@@ -3,6 +3,7 @@ use log::{info, trace};
 use std::fs::File;
 use std::io::{BufWriter, Result, Write};
 
+#[derive(Debug)]
 struct Waypoint {
     time: DateTime<Utc>,
     wpflags: u8,
@@ -16,6 +17,7 @@ struct Waypoint {
     lon: f32,
 }
 
+#[derive(Debug)]
 enum DatablockEnum {
     Datablock(Waypoint),
     PrevMod(DateTime<Utc>, u8),
@@ -299,4 +301,90 @@ fn parse_datablock(value: Vec<u8>) -> DatablockEnum {
         lat: lat,
         lon: lon,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use hex_literal::hex;
+
+    #[test]
+    fn parse_datablock_NoBlock_goodcase() {
+        let input=hex!["ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff"].to_vec();
+
+        let result = parse_datablock(input);
+
+        println!("{:?}", result);
+        assert!(matches!(result, DatablockEnum::NoBlock));
+    }
+
+    #[test]
+    fn parse_datablock_NextMod_switchOn() {
+        let input=hex!["41 a0 19 07 fd 05 f4 15 00 00 0c 00 00 19 00 00 00 00 00 00 00 00 3a c0 00 00 00 00 00 00"].to_vec();
+
+        let result = parse_datablock(input);
+
+        println!("{:?}", result);
+        assert!(matches!(result, DatablockEnum::NextMod(_, _)));
+        let DatablockEnum::NextMod(time, flags) = result else {
+            panic!("Invalid result type")
+        };
+        //        assert_eq!(wpt.time, 0);
+        assert_eq!(flags, 0x01);
+    }
+
+    #[test]
+    fn parse_datablock_PrevMod_switchOff() {
+        let input=hex!["42 a6 19 07 fd 08 69 b5 2a 00 00 00 00 00 2c 95 3b 1c ce 55 18 05 b6 a3 00 00 19 00 c0 0f"].to_vec();
+
+        let result = parse_datablock(input);
+
+        println!("{:?}", result);
+        assert!(matches!(result, DatablockEnum::PrevMod(_, _)));
+        let DatablockEnum::PrevMod(time, flags) = result else {
+            panic!("Invalid result type")
+        };
+        //        assert_eq!(wpt.time, 0);
+        assert_eq!(flags, 0x02);
+    }
+
+    #[test]
+    fn parse_datablock_Datablock_goodcase() {
+        let input=hex!["00 a4 19 07 fd 08 99 ad 2a 00 2b 35 00 19 2c 95 3b 1c cc 61 18 05 c2 ab 00 00 73 00 cd 1e"].to_vec();
+
+        let result = parse_datablock(input);
+
+        println!("{:?}", result);
+        assert!(matches!(result, DatablockEnum::Datablock(_)));
+        let DatablockEnum::Datablock(wpt) = result else {
+            panic!("Invalid result type")
+        };
+        //        assert_eq!(wpt.time, 0);
+        assert_eq!(wpt.wpflags, 0x00);
+        assert_eq!(wpt.sat_used, 4);
+        assert_eq!(wpt.sat_visib, 10);
+        assert_eq!(wpt.course, 78.85);
+        assert_eq!(wpt.speed, 1.15);
+        assert_eq!(wpt.hdop, 4.2);
+        assert_eq!(wpt.ele, 439.7);
+        assert_eq!(wpt.lat, 47.366684);
+        assert_eq!(wpt.lon, 8.548398);
+    }
+
+    #[test]
+    fn parse_datablock_NextMod_button() {
+        let input=hex!["43 a0 19 07 fd 07 71 e0 00 00 0c 00 00 19 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"].to_vec();
+
+        let result = parse_datablock(input);
+
+        println!("{:?}", result);
+        assert!(matches!(result, DatablockEnum::NextMod(_, _)));
+        let DatablockEnum::NextMod(time, flags) = result else {
+            panic!("Invalid result type")
+        };
+        //        assert_eq!(wpt.time, 0);
+        assert_eq!(flags, 0x10);
+    }
+
+    //TODO test dump. use a virtual Writer
 }
