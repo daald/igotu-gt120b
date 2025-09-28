@@ -184,3 +184,129 @@ pub fn cmd_delete_reboot(comm: &mut CommBulk) {
 
     comm.simple_cmd_oneway_devicereset(command);
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Intf;
+
+    struct IntfMock {
+        req: Vec<u8>,
+        res: Vec<u8>,
+    }
+
+    fn new_mock(req: Vec<u8>, res: Vec<u8>) -> CommBulk {
+        CommBulk::new(Box::new(IntfMock {
+            req: req.to_vec(),
+            res: res.to_vec(),
+        }))
+    }
+
+    impl Intf for IntfMock {
+        fn send_and_receive(&mut self, to_device: Vec<u8>) -> Vec<u8> {
+            assert_eq!(to_device, self.req);
+            return self.res.clone();
+        }
+
+        fn cmd_oneway_devicereset(&mut self, to_device: Vec<u8>) {
+            assert_eq!(to_device, self.req);
+            assert_eq!(self.res, Vec::<u8>::new());
+        }
+
+        fn get_time_micros(&self) -> u64 {
+            panic!("Not implemented");
+        }
+    }
+
+    #[test]
+    fn cmd_nmea_switch_goodcase() {
+        let mut comm = new_mock(
+            hex!["93 01 01 03 00 00 00 00 00 00 00 00 00 00 00 68"].to_vec(),
+            hex!["93 00 00 6d"].to_vec(),
+        );
+        let flag = true;
+
+        cmd_nmea_switch(&mut comm, flag);
+    }
+
+    #[test]
+    fn cmd_model_goodcase() {
+        let mut comm = new_mock(
+            hex!["93 05 04 00 03 01 9f 00 00 00 00 00 00 00 00 c1"].to_vec(),
+            hex!["93 00 03 c2 20 15 73"].to_vec(),
+        );
+
+        let result = cmd_model(&mut comm);
+
+        assert_eq!(result, Model::Gt120);
+    }
+
+    #[test]
+    fn cmd_identification_true_goodcase() {
+        let mut comm = new_mock(
+            hex!["93 0a 00 00 00 00 00 00 00 00 00 00 00 00 00 63"].to_vec(),
+            hex!["93 00 11 a6 23 63 0d 01 02 00 0a 4d 2f 66 0d 71 8c 18 00 02 10"].to_vec(),
+        );
+
+        let result = cmd_identification(&mut comm, true);
+
+        assert_eq!(result.manufacturer, "");
+        assert_eq!(result.model, 10);
+        assert_eq!(result.device_id, "0010-00188C710D66");
+        assert_eq!(result.name, "GT120B-0D66");
+        assert_eq!(result.alias, "GT120B-0D66");
+        assert_eq!(result.serial_number, "100224600998");
+        assert_eq!(result.hw_version, "");
+        assert_eq!(result.fw_version, "1.2.231013");
+        assert_eq!(result.sw_version, "not installed");
+        assert_eq!(result.description, "");
+    }
+
+    #[test]
+    fn cmd_count_goodcase() {
+        let mut comm = new_mock(
+            hex!["93 0b 03 00 1d 00 00 00 00 00 00 00 00 00 00 42"].to_vec(),
+            hex!["93 00 03 00 0f 2b 30"].to_vec(),
+        );
+
+        let result = cmd_count(&mut comm);
+
+        assert_eq!(result, 0x7A000);
+    }
+
+    #[test]
+    fn cmd_set_time_goodcase() {
+        let mut comm = new_mock(
+            hex!["93 09 78 38 09 74 40 3b 06 00 2e e2 8b 68 00 b3"].to_vec(),
+            hex!["93 00 00 6d"].to_vec(),
+        );
+
+        let time_us = 1753997870971000_u64;
+
+        cmd_set_time(&mut comm, time_us);
+    }
+
+    #[test]
+    fn cmd_read_goodcase() {
+        let mut comm = new_mock(
+            hex!["93 05 07 00 08 04 03 1f ff 80 00 00 00 00 00 b4"].to_vec(),
+            hex!["93 00 08 11 22 3f 44 55 66 77 88 f5"].to_vec(),
+        );
+
+        let size = 0x0008;
+        let pos = 0x1fff80;
+        let result = cmd_read(&mut comm, pos, size);
+
+        assert_eq!(result, hex!["11 22 3f 44 55 66 77 88"].to_vec());
+    }
+
+    #[test]
+    fn cmd_delete_reboot_goodcase() {
+        let mut comm = new_mock(
+            hex!["93 11 02 00 80 00 00 00 00 00 00 00 00 00 00 da"].to_vec(),
+            hex![""].to_vec(),
+        );
+
+        cmd_delete_reboot(&mut comm);
+    }
+}
