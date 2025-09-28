@@ -110,9 +110,9 @@ pub fn cmd_identification(
         fw_version: version,
         sw_version: "not installed".to_owned(),
         description: "".to_owned(),
+        // TODO downloader-version (this version) "igotu-gt120 1.2.3/linux https://github/link"
     };
 
-    println!("{}", serde_json::to_string(&id_struct).unwrap());
     println!("{}", serde_json::to_string_pretty(&id_struct).unwrap());
 
     return id_struct;
