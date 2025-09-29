@@ -26,7 +26,7 @@ enum DatablockEnum {
 }
 
 impl DatablockEnum {
-    pub fn dump(&self, f: &mut BufWriter<File>) -> Result<()> {
+    pub fn dump<T: std::io::Write>(&self, f: &mut BufWriter<T>) -> Result<()> {
         match self {
             DatablockEnum::Datablock(wpt) => {
                 writeln!(
@@ -386,5 +386,50 @@ mod tests {
         assert_eq!(flags, 0x10);
     }
 
-    //TODO test dump. use a virtual Writer
+    #[test]
+    fn dump() {
+        let input = Waypoint {
+            time: NaiveDate::from_ymd_opt(2025, 7, 31)
+                .unwrap()
+                .and_hms_milli_opt(20, 8, 44, 441)
+                .unwrap()
+                .and_utc(),
+            wpflags: 18,
+            sat_used: 4,
+            sat_visib: 10,
+            course: 78.85,
+            speed: 1.15,
+            hdop: 4.2,
+            ele: 439.7,
+            lat: 47.366684,
+            lon: 8.548398,
+        };
+        let mut buf = Vec::<u8>::new();
+        let mut writer = BufWriter::new(buf);
+
+        DatablockEnum::Datablock(input).dump(&mut writer).unwrap();
+
+        let s = String::from_utf8(writer.into_inner().unwrap()).unwrap();
+        assert_eq!(
+            s,
+            "      \
+      <trkpt lat=\"47.366684\" lon=\"8.548398\">
+        <ele>439.7</ele>
+        <time>2025-07-31T20:08:44.441+00:00</time>
+        <type>WpFlag:18</type>
+        <sat>4</sat>
+        <hdop>4.2</hdop>
+        <extensions>
+          <gpxtpx:TrackPointExtension>
+            <gpxtpx:speed>1.15</gpxtpx:speed>
+            <gpxtpx:course>78.85</gpxtpx:course>
+          </gpxtpx:TrackPointExtension>
+          <mat:TrackPointExtension>
+            <mat:sat_view>10</mat:sat_view>
+          </mat:TrackPointExtension>
+        </extensions>
+      </trkpt>
+"
+        );
+    }
 }
