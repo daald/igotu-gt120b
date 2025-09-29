@@ -27,11 +27,10 @@ enum DatablockEnum {
 
 impl DatablockEnum {
     pub fn dump<T: std::io::Write>(&self, f: &mut BufWriter<T>) -> Result<()> {
-        match self {
-            DatablockEnum::Datablock(wpt) => {
-                writeln!(
-                    f,
-                    "      <trkpt lat=\"{}\" lon=\"{}\">
+        if let DatablockEnum::Datablock(wpt) = self {
+            writeln!(
+                f,
+                "      <trkpt lat=\"{}\" lon=\"{}\">
         <ele>{}</ele>
         <time>{}</time>{}
         <sat>{}</sat>
@@ -46,23 +45,21 @@ impl DatablockEnum {
           </mat:TrackPointExtension>
         </extensions>
       </trkpt>",
-                    &wpt.lat,
-                    &wpt.lon,
-                    &wpt.ele,
-                    &wpt.time.to_rfc3339(),
-                    if wpt.wpflags != 0 {
-                        format!("\n        <type>WpFlag:{}</type>", &wpt.wpflags)
-                    } else {
-                        "".to_string()
-                    },
-                    &wpt.sat_used,
-                    &wpt.hdop,
-                    &wpt.speed,
-                    &wpt.course,
-                    &wpt.sat_visib,
-                )?;
-            }
-            _ => (),
+                &wpt.lat,
+                &wpt.lon,
+                &wpt.ele,
+                &wpt.time.to_rfc3339(),
+                if wpt.wpflags != 0 {
+                    format!("\n        <type>WpFlag:{}</type>", &wpt.wpflags)
+                } else {
+                    "".to_string()
+                },
+                &wpt.sat_used,
+                &wpt.hdop,
+                &wpt.speed,
+                &wpt.course,
+                &wpt.sat_visib,
+            )?;
         }
         Ok(())
     }
@@ -101,7 +98,7 @@ impl Gt120bDataDump {
         self.parse_data(data);
     }
     pub fn write_out(&mut self, conf_change_every_day: bool, meta_desc: &String) -> Result<usize> {
-        self.waypoints.sort_by(|a, b| a.time().cmp(&b.time()));
+        self.waypoints.sort_by_key(|a| a.time());
 
         fn start_file(name: &str, meta_desc: &String) -> Result<Option<BufWriter<File>>> {
             info!("Writing gpx file {name}");
@@ -119,6 +116,7 @@ impl Gt120bDataDump {
             fbuf.flush()?;
             Ok(Some(fbuf))
         }
+        #[allow(clippy::toplevel_ref_arg)]
         fn end_file(ref mut f_ref: Option<BufWriter<File>>) -> Result<()> {
             if let Some(f) = f_ref {
                 writeln!(
@@ -143,9 +141,9 @@ impl Gt120bDataDump {
             let day = localdatetime.date_naive();
             if day != *lastday {
                 set_daychange(time, lastday);
-                return true;
+                true
             } else {
-                return false;
+                false
             }
         }
 
@@ -156,11 +154,12 @@ impl Gt120bDataDump {
         let mut filenum = 0;
         for wp in &self.waypoints {
             if let DatablockEnum::Datablock(wpt) = wp {
-                if f_ref.is_some() {
-                    if conf_change_every_day && need_daychange(&wpt.time, &mut lastday) {
-                        end_file(f_ref)?;
-                        f_ref = None;
-                    }
+                if f_ref.is_some()
+                    && conf_change_every_day
+                    && need_daychange(&wpt.time, &mut lastday)
+                {
+                    end_file(f_ref)?;
+                    f_ref = None;
                 }
                 if f_ref.is_none() {
                     filenum += 1;
@@ -171,11 +170,9 @@ impl Gt120bDataDump {
                     set_daychange(&wpt.time, &mut lastday);
                 }
                 wp.dump(f_ref.as_mut().expect("at this stage, file is always open"))?;
-                if f_ref.is_some() {
-                    if wp.is_eof() {
-                        end_file(f_ref)?;
-                        f_ref = None;
-                    }
+                if f_ref.is_some() && wp.is_eof() {
+                    end_file(f_ref)?;
+                    f_ref = None;
                 }
             }
         }

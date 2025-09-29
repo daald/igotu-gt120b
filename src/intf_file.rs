@@ -1,7 +1,6 @@
 use log::{debug, info, trace};
 extern crate chrono;
 use chrono::{TimeZone, Utc};
-use hex;
 use std::fs::read_to_string;
 
 use crate::intf;
@@ -25,12 +24,10 @@ impl IntfFile {
 
         let mut result = Vec::new();
 
-        let mut line_num = 0;
         let mut next_comment: String = "".to_string();
-        for line in read_to_string(file_name).unwrap().lines() {
-            line_num += 1;
+        for (line_num, line) in read_to_string(file_name).unwrap().lines().enumerate() {
             let next_isout;
-            if line == "" || line.starts_with("#") {
+            if line.is_empty() || line.starts_with("#") {
                 if line.starts_with("#: ") {
                     next_comment = line[2..].trim().to_string();
                 }
@@ -51,10 +48,10 @@ impl IntfFile {
             });
             next_comment = "".to_string();
         }
-        return Self {
+        Self {
             lines: result,
             next_line: 0,
-        };
+        }
     }
 
     fn sim_send(&mut self, to_device: Vec<u8>) -> &InOut {
@@ -74,7 +71,7 @@ impl IntfFile {
                 out_line.line_num, to_device, out_line.line
             );
         }
-        return out_line;
+        out_line
     }
 }
 
@@ -93,7 +90,7 @@ impl Intf for IntfFile {
             panic!("SIMULATOR <#{}: Not a response in line", in_line.line_num);
         }
         let mut line = in_line.line.clone();
-        while self.next_line < (&self.lines).len() && !&self.lines[self.next_line].out {
+        while self.next_line < self.lines.len() && !self.lines[self.next_line].out {
             let in_line = &self.lines[self.next_line];
             self.next_line += 1;
             if !in_line.comment.is_empty() {
@@ -101,7 +98,7 @@ impl Intf for IntfFile {
             }
             line.append(&mut in_line.line.to_vec());
         }
-        return line;
+        line
     }
 
     fn cmd_oneway_devicereset(&mut self, to_device: Vec<u8>) {
@@ -121,6 +118,6 @@ impl Intf for IntfFile {
             time_us,
             dt.single().unwrap().to_rfc2822()
         );
-        return time_us;
+        time_us
     }
 }

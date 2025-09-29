@@ -91,8 +91,9 @@ ls "$basename"/gpx/*.gpx "$basename"/*.gpx 2>/dev/null >"$expect_filelist" || tr
 #[ "$numgpx" -ge 1 ]
 
 out_gpx=./  #"$(mktemp -d)"
-rm -f "$out_gpx"/testout-*.gpx
-./testsim.sh "$replayfile"
+[ -d gpx-bak/ ] || mkdir gpx-bak/
+mv -v "$out_gpx"/testout-*.gpx gpx-bak/ || true
+./simtest.sh "$replayfile"
 ls "$out_gpx"/testout-*.gpx >"$sim_filelist"
 [ -s "$sim_filelist" ] || panic "No output files found"
 

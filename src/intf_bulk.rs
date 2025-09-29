@@ -38,7 +38,7 @@ impl Intf for IntfBulk {
             answer.append(&mut self.read_answer(&mut queue));
         }
 
-        return answer;
+        answer
     }
 
     fn cmd_oneway_devicereset(&mut self, to_device: Vec<u8>) {
@@ -60,7 +60,7 @@ impl Intf for IntfBulk {
             .duration_since(SystemTime::UNIX_EPOCH)
             .unwrap();
         let timestamp_micros = duration_since_epoch.as_micros();
-        return timestamp_micros as u64;
+        timestamp_micros as u64
     }
 }
 
@@ -81,11 +81,11 @@ impl IntfBulk {
             let di_opt = nusb::list_devices().unwrap().find(|d| {
                 d.vendor_id() == DEVID_VENDOR
                     && d.product_id() == DEVID_PRODUCT
-                    && match_partially_last_device(&d, bus_id, device_id)
+                    && match_partially_last_device(d, bus_id, device_id)
             });
 
-            if di_opt.is_some() {
-                return di_opt.unwrap();
+            if let Some(di) = di_opt {
+                return di;
             }
             if wait {
                 thread::sleep(time::Duration::from_millis(sleep_time));
@@ -114,20 +114,18 @@ impl IntfBulk {
         let interface = device.detach_and_claim_interface(DEVICE_INTERFACE).unwrap();
 
         Self::ctrl_set_line_state(&mut device);
-        return (device, di, interface);
+        (device, di, interface)
     }
 
     fn read_answer(&mut self, in_queue: &mut Queue<RequestBuffer>) -> Vec<u8> {
-        loop {
-            while in_queue.pending() < 8 {
-                in_queue.submit(RequestBuffer::new(256));
-            }
-            let result = block_on(in_queue.next_complete());
-
-            result.status.expect("Error while reading from USB");
-
-            return result.data;
+        while in_queue.pending() < 8 {
+            in_queue.submit(RequestBuffer::new(256));
         }
+        let result = block_on(in_queue.next_complete());
+
+        result.status.expect("Error while reading from USB");
+
+        return result.data;
     }
 
     /**

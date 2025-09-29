@@ -32,10 +32,10 @@ pub fn cmd_model(comm: &mut CommBulk) -> Model {
 
     let model = answer[2];
     match model {
-        0x13 => return Model::Gt100,
-        0x14 => return Model::Gt200,
-        0x15 => return Model::Gt120, // a and b version!
-        0x17 => return Model::Gt200e,
+        0x13 => Model::Gt100,
+        0x14 => Model::Gt200,
+        0x15 => Model::Gt120, // a and b version!
+        0x17 => Model::Gt200e,
         _ => panic!("Unknown model code: {:02x}", answer[2]),
     }
 }
@@ -114,7 +114,7 @@ pub fn cmd_identification(
 
     println!("{}", serde_json::to_string_pretty(&id_struct).unwrap());
 
-    return id_struct;
+    id_struct
 }
 
 fn calculate_offset_from_count(b: u8, c: u8) -> u32 {
@@ -136,7 +136,7 @@ pub fn cmd_count(comm: &mut CommBulk) -> u32 {
 
     debug!("count/offset: {offset}, {offset:06x}");
 
-    return offset;
+    offset
 }
 
 pub fn cmd_set_time(comm: &mut CommBulk, time_us: u64) {
@@ -165,7 +165,7 @@ pub fn cmd_read(comm: &mut CommBulk, pos: u32, size: u16) -> Vec<u8> {
     if answer.len() != size as usize {
         panic!("Unexpected answer: {answer:02x?}");
     }
-    return answer;
+    answer
 }
 
 pub fn cmd_delete_reboot(comm: &mut CommBulk) {

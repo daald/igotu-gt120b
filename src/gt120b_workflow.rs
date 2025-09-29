@@ -64,7 +64,7 @@ pub fn workflow(
 
     if !all_begin_empty {
         // result is important in some usecases
-        let resp = cmd_read(comm, offset + 0x000000, 0x0100);
+        let resp = cmd_read(comm, offset, 0x0100);
         if let Some(ref mut datadumper) = datadumper_ref {
             datadumper.process_datablock(resp);
         }
@@ -121,7 +121,7 @@ pub fn workflow(
     );
 
     let time_us = comm.get_time_micros();
-    cmd_set_time(comm, time_us); //  1753997893134000u64
+    cmd_set_time(comm, time_us);
 }
 
 fn cmdblock_readconfig(comm: &mut CommBulk, id_struct: &mut IdentificationJson) {
@@ -163,7 +163,7 @@ fn cmdblock_find_end_offset(comm: &mut CommBulk, id_offset: u32) -> (u32, bool) 
 
         cmd_read(comm, id_offset + (i - 1) * 0x1000 + 0xf80, 0x080); // from data dump of original software. no clue
     }
-    return (end_offset, all_begin_empty);
+    (end_offset, all_begin_empty)
 }
 
 fn cmdblock_identify(
@@ -185,7 +185,7 @@ fn cmdblock_identify(
     // CountCommand
     let offset = cmd_count(comm);
 
-    return (model, offset, id_struct);
+    (model, offset, id_struct)
 }
 
 /*
@@ -196,7 +196,7 @@ fn cmdblock_read_doublet(
     pos: u32,
     datadumper_ref: &mut Option<&mut Gt120bDataDump>,
 ) -> bool {
-    let resp1 = cmd_read(comm, pos + 0x000000, 0x0100); // beginning. also used for probing
+    let resp1 = cmd_read(comm, pos, 0x0100); // beginning. also used for probing
     if resp1 == vec![0xff; 0x0100] {
         trace!("empty block. skip 2nd read");
         return false;
