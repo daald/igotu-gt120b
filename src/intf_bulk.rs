@@ -68,8 +68,8 @@ impl IntfBulk {
     pub fn new() -> Self {
         let (device, device_info, interface) = Self::setup_device_and_interface(false, 0xff, 0xff);
         Self {
-            device: device,
-            interface: interface,
+            device,
+            interface,
             bus_id: device_info.bus_number(),
             device_id: device_info.device_address(),
         }

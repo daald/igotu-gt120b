@@ -46,7 +46,7 @@ impl IntfFile {
             result.push(InOut {
                 out: next_isout,
                 line: hex::decode(line.to_string()[2..].replace(":", "")).expect("Decoding failed"),
-                line_num: line_num,
+                line_num,
                 comment: next_comment,
             });
             next_comment = "".to_string();

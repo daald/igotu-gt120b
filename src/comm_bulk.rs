@@ -9,7 +9,7 @@ pub struct CommBulk {
 impl CommBulk {
     pub fn new(intf: Box<dyn Intf>) -> Self {
         CommBulk {
-            intf: intf,
+            intf,
             is_first_command: true,
         }
     }

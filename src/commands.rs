@@ -100,7 +100,7 @@ pub fn cmd_identification(
         } else {
             "mobileaction //TODO".to_owned()
         },
-        model: model,
+        model,
         device_id: deviceid,
         name: format!("{modelname}-{name2}"), // TODO name or alias is customizable
         alias: format!("{modelname}-{name2}"),

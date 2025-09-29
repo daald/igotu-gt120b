@@ -286,16 +286,16 @@ fn parse_datablock(value: Vec<u8>) -> DatablockEnum {
     let lon = i32::from_le_bytes(value[18..22].try_into().unwrap()) as f32 / 10000000.0;
 
     DatablockEnum::Datablock(Waypoint {
-        time: time,
+        time,
         wpflags: 0,
-        sat_used: sat_used,
-        sat_visib: sat_visib,
-        course: course,
-        speed: speed,
-        hdop: hdop,
-        ele: ele,
-        lat: lat,
-        lon: lon,
+        sat_used,
+        sat_visib,
+        course,
+        speed,
+        hdop,
+        ele,
+        lat,
+        lon,
     })
 }
 
