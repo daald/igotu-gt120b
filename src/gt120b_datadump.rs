@@ -261,11 +261,7 @@ fn parse_datablock(value: Vec<u8>) -> DatablockEnum {
     let mon = ymd >> 16 & 0xf;
     let year = 2000 + value[2] as i32;
 
-    let time = NaiveDate::from_ymd_opt(year, mon, day)
-        .unwrap()
-        .and_hms_milli_opt(hour, mins, secs, msecs)
-        .unwrap()
-        .and_utc();
+    let time = utc_dt_from_ymd_hms_milli(year, mon, day, hour, mins, secs, msecs);
 
     if value[0] == 0x41 {
         // new track, no geo
@@ -303,7 +299,24 @@ fn parse_datablock(value: Vec<u8>) -> DatablockEnum {
     })
 }
 
+fn utc_dt_from_ymd_hms_milli(
+    y: i32,
+    mo: u32,
+    d: u32,
+    h: u32,
+    mi: u32,
+    s: u32,
+    milli: u32,
+) -> DateTime<Utc> {
+    NaiveDate::from_ymd_opt(y, mo, d)
+        .unwrap()
+        .and_hms_milli_opt(h, mi, s, milli)
+        .unwrap()
+        .and_utc()
+}
+
 #[cfg(test)]
+#[allow(non_snake_case)]
 mod tests {
     use super::*;
     use hex_literal::hex;
@@ -329,7 +342,7 @@ mod tests {
         let DatablockEnum::NextMod(time, flags) = result else {
             panic!("Invalid result type")
         };
-        //        assert_eq!(wpt.time, 0);
+        assert_eq!(time, utc_dt_from_ymd_hms_milli(2025, 7, 31, 20, 5, 5, 620));
         assert_eq!(flags, 0x01);
     }
 
@@ -344,7 +357,7 @@ mod tests {
         let DatablockEnum::PrevMod(time, flags) = result else {
             panic!("Invalid result type")
         };
-        //        assert_eq!(wpt.time, 0);
+        assert_eq!(time, utc_dt_from_ymd_hms_milli(2025, 7, 31, 20, 8, 46, 441));
         assert_eq!(flags, 0x02);
     }
 
@@ -359,7 +372,10 @@ mod tests {
         let DatablockEnum::Datablock(wpt) = result else {
             panic!("Invalid result type")
         };
-        //        assert_eq!(wpt.time, 0);
+        assert_eq!(
+            wpt.time,
+            utc_dt_from_ymd_hms_milli(2025, 7, 31, 20, 8, 44, 441)
+        );
         assert_eq!(wpt.wpflags, 0x00);
         assert_eq!(wpt.sat_used, 4);
         assert_eq!(wpt.sat_visib, 10);
@@ -382,18 +398,14 @@ mod tests {
         let DatablockEnum::NextMod(time, flags) = result else {
             panic!("Invalid result type")
         };
-        //        assert_eq!(wpt.time, 0);
+        assert_eq!(time, utc_dt_from_ymd_hms_milli(2025, 7, 31, 20, 7, 57, 457));
         assert_eq!(flags, 0x10);
     }
 
     #[test]
     fn dump() {
         let input = Waypoint {
-            time: NaiveDate::from_ymd_opt(2025, 7, 31)
-                .unwrap()
-                .and_hms_milli_opt(20, 8, 44, 441)
-                .unwrap()
-                .and_utc(),
+            time: utc_dt_from_ymd_hms_milli(2025, 7, 31, 20, 8, 44, 441),
             wpflags: 18,
             sat_used: 4,
             sat_visib: 10,
@@ -404,7 +416,7 @@ mod tests {
             lat: 47.366684,
             lon: 8.548398,
         };
-        let mut buf = Vec::<u8>::new();
+        let buf = Vec::<u8>::new();
         let mut writer = BufWriter::new(buf);
 
         DatablockEnum::Datablock(input).dump(&mut writer).unwrap();
