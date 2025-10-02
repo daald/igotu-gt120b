@@ -209,5 +209,5 @@ fn cmdblock_read_doublet(
     if let Some(datadumper) = datadumper_ref {
         datadumper.process_datablock(resp2);
     }
-    return true;
+    true
 }

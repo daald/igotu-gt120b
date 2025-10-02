@@ -1,0 +1,6 @@
+# /etc/udev/rules.d/51-igotu2gpx.rules
+
+# GT-120
+#SUBSYSTEMS=="usb", ATTRS{idVendor}=="0df7", ATTRS{idProduct}=="0900", GROUP="plugdev", MODE="0664"
+# GT-120b
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="0df7", ATTRS{idProduct}=="0920", GROUP="plugdev", MODE="0664"

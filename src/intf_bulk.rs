@@ -125,7 +125,7 @@ impl IntfBulk {
 
         result.status.expect("Error while reading from USB");
 
-        return result.data;
+        result.data
     }
 
     /**
