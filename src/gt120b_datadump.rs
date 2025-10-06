@@ -98,8 +98,6 @@ impl Gt120bDataDump {
         self.parse_data(data);
     }
     pub fn write_out(&mut self, conf_change_every_day: bool, meta_desc: &String) -> Result<usize> {
-        self.waypoints.sort_by_key(|a| a.time());
-
         fn start_file(name: &str, meta_desc: &String) -> Result<Option<BufWriter<File>>> {
             info!("Writing gpx file {name}");
             let f = File::create(name)?;
@@ -146,6 +144,24 @@ impl Gt120bDataDump {
                 false
             }
         }
+        fn dump_time_range(waypoints: &Vec<DatablockEnum>) {
+            if let Some(t) = waypoints
+                .iter()
+                .find(|&wp| matches!(wp, DatablockEnum::Datablock(_)))
+            {
+                info!("  Earliest waypoint received: {}", t.time().to_rfc3339());
+            }
+            if let Some(t) = waypoints
+                .iter()
+                .rev()
+                .find(|&wp| matches!(wp, DatablockEnum::Datablock(_)))
+            {
+                info!("  Latest waypoint received:   {}", t.time().to_rfc3339());
+            }
+        }
+
+        self.waypoints.sort_by_key(|a| a.time());
+        dump_time_range(&self.waypoints);
 
         self.transfer_flags_reverse();
         self.transfer_flags_forward();
