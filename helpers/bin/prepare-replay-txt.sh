@@ -7,7 +7,7 @@ set -e
 # * usb.capdata[0] == 0x93 and ((usb.urb_type == 'S' and usb.transfer_type == 0x03 and usb.endpoint_address == 0x01) or (usb.urb_type == 'C' and usb.transfer_type == 0x03 and usb.endpoint_address == 0x81))
 # * usb.addr == "3.7.1" or usb.addr == "3.8.1"
 
-drop_in_lines=
+drop_in_lines=1
 for f in "$@"; do
   jq -r '.[]._source.layers | .usb."usb.src", .usb."usb.dst", ."usb.capdata", ""' <"$f"
 done | while read src; read dst; read pl;read x; do

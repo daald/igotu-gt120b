@@ -3,13 +3,54 @@
 set -ex
 set -o pipefail
 
+test_with_directory() {
+  local d="$1"
+  local jsonfile="$(ls -d "$d/"*.json || true)"
+  [ -f "$jsonfile" ] || { echo "no .json file"; return; }
+  local jsontxtfile="$jsonfile.txt"
+  if ! [ -f "$jsontxtfile" ]; then
+    echo "ad-hoc generating .json.txt file"
+    helpers/bin/prepare-replay-txt.sh "$jsonfile" >"$jsontxtfile"
+  fi
+  local summaryfile="$jsonfile.txt.summary"
+  if ! [ -f "$summaryfile" ]; then
+    echo "ad-hoc generating .json.txt.summary file"
+    helpers/bin/summarize-replay-txt.sh "$jsontxtfile" >"$summaryfile"
+  fi
+  [ -f "$jsontxtfile" ] || { echo "no .json.txt file"; return; }
+  if "$0" "$jsontxtfile"; then
+    echo "OK"
+  else
+    echo "EXIT $?"
+  fi
+}
+
 if [ ! -f "$1" ]; then
   [ -n "$logdir" ] || logdir=.
   [ ! -d ../../usbmon-log/ ] || logdir=../../usbmon-log
   [ ! -d ../datalogs/ ] || logdir=../datalogs
   case "$1" in
+    all)
+      testsummaryfile=/tmp/.$$.testlog
+      for d in $logdir/gt-120b/*/; do
+        [ -d "$d" ] || continue
+        [ ! -f "$d/no-standard-case.stamp" ] || continue
+        echo
+        echo "## TESTING $d"
+        test_with_directory "$d" >"$d/last-test.log" 2>&1
+        lastline="$(tail -n30 "$d/last-test.log" | grep -F "Next cmd doesn't match" | tail -n1 | cut -c1-40)" ||:
+        [ -n "$lastline" ] || lastline="$(tail -n5 "$d/last-test.log" | grep -i '^error' | tail -n1 | cut -c1-40)" ||:
+        [ -n "$lastline" ] || lastline="$(tail -n5 "$d/last-test.log" | grep -vxF '+ return' | tail -n1)"
+        printf "%-40s %s\n" "$lastline" "$d" >>"$testsummaryfile"
+        printf "%-40s %s\n" "$lastline" "$d"
+      done
+      echo
+      echo "Complete summary:"
+      cat "$testsummaryfile"
+      exit 0
+      ;;
     d|*)
-      exec "$0" $logdir/gt-120b/gt-120b-kvm-session-2025-07-31_anonymenoughforpub/gt-120b-kvm-sesson-20250731_rawdatacount3+3.json.txt
+      exec "$0" $logdir/gt-120b/gt-120b-kvm-session-2025-07-31_anonymenoughforpub/gt-120b-kvm-sesson-20250731_rawdatacount3+3.filtered.pcapng.json.txt
       ;;
   esac
   exit 1
