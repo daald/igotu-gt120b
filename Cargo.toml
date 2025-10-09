@@ -1,11 +1,12 @@
 [package]
 name = "igotu-gt120"
 version = "0.1.0"
+authors = ["Daniel Alder"]
 edition = "2024"
 
 [dependencies]
 nusb = "0.1.14"
-#nusb = "0.2.0-beta"
+#TODO nusb = "0.2.0-beta"
 futures-lite = "1.13.0"
 env_logger = "0.11.8"
 log = "0.4.28"
