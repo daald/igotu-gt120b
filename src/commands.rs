@@ -49,7 +49,7 @@ pub struct IdentificationJson {
     #[serde(rename = "DeviceID")]
     device_id: String,
     name: String,
-    pub alias: String,
+    pub alias: String, // variable, can be changed by owner
     serial_number: String,
     #[serde(rename = "HWVersion")]
     hw_version: String,
@@ -102,8 +102,8 @@ pub fn cmd_identification(
         },
         model,
         device_id: deviceid,
-        name: format!("{modelname}-{name2}"), // TODO name or alias is customizable
-        alias: format!("{modelname}-{name2}"),
+        name: format!("{modelname}-{name2}"),
+        alias: format!("{modelname}-{name2}"), // alias is customizable, will be overwritten later
         serial_number: serialnumber.to_string(),
         hw_version: "".to_owned(), //TODO no way to find out??
         fw_version: version,
