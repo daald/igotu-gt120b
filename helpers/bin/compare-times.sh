@@ -6,7 +6,7 @@ set -o pipefail
 test_with_directory() {
   local d="$1"
   local jsonfile="$(ls -d "$d/"*.json || true)"
-  [ -f "$jsonfile" ] || { echo "no .json file"; return; }
+  [ -f "$jsonfile" ] || { echo "ERROR: no .json file"; return; }
   local jsontxtfile="$jsonfile.txt"
   if ! [ -f "$jsontxtfile" ]; then
     echo "ad-hoc generating .json.txt file"
@@ -17,7 +17,11 @@ test_with_directory() {
     echo "ad-hoc generating .json.txt.summary file"
     helpers/bin/summarize-replay-txt.sh "$jsontxtfile" >"$summaryfile"
   fi
-  [ -f "$jsontxtfile" ] || { echo "no .json.txt file"; return; }
+  [ -f "$jsontxtfile" ] || { echo "ERROR: no .json.txt file"; return; }
+  if ! grep -q "#: delete/reboot" "$jsontxtfile"; then
+    echo "ERROR: no standard case / no reboot in .txt"
+    return
+  fi
   if "$0" "$jsontxtfile"; then
     echo "OK"
   else
