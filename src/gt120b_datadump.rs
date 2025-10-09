@@ -293,7 +293,7 @@ fn parse_datablock(value: Vec<u8>) -> DatablockEnum {
     let sat_visib = (value[1] & 0xf0) >> 4;
     let course = u16::from_le_bytes(value[28..30].try_into().unwrap()) as f32 / 100.0;
     let speed = u16::from_le_bytes(value[26..28].try_into().unwrap()) as f32 / 100.0;
-    let hdop = value[8] as f32 / 10.0;
+    let hdop = u16::from_le_bytes(value[8..10].try_into().unwrap()) as f32 / 10.0;
     let ele = i32::from_le_bytes(value[22..26].try_into().unwrap()) as f32 / 100.0;
     let lat = i32::from_le_bytes(value[14..18].try_into().unwrap()) as f32 / 10000000.0;
     let lon = i32::from_le_bytes(value[18..22].try_into().unwrap()) as f32 / 10000000.0;
@@ -395,6 +395,32 @@ mod tests {
         assert_eq!(wpt.course, 78.85);
         assert_eq!(wpt.speed, 1.15);
         assert_eq!(wpt.hdop, 4.2);
+        assert_eq!(wpt.ele, 439.7);
+        assert_eq!(wpt.lat, 47.366684);
+        assert_eq!(wpt.lon, 8.548398);
+    }
+
+    #[test]
+    fn parse_datablock_Datablock_wide_hdop() {
+        let input=hex!["00 a4 19 07 fd 08 99 ad 17 02 2b 35 00 19 2c 95 3b 1c cc 61 18 05 c2 ab 00 00 73 00 cd 1e"].to_vec();
+
+        let result = parse_datablock(input);
+
+        println!("{:?}", result);
+        assert!(matches!(result, DatablockEnum::Datablock(_)));
+        let DatablockEnum::Datablock(wpt) = result else {
+            panic!("Invalid result type")
+        };
+        assert_eq!(
+            wpt.time,
+            utc_dt_from_ymd_hms_milli(2025, 7, 31, 20, 8, 44, 441)
+        );
+        assert_eq!(wpt.wpflags, 0x00);
+        assert_eq!(wpt.sat_used, 4);
+        assert_eq!(wpt.sat_visib, 10);
+        assert_eq!(wpt.course, 78.85);
+        assert_eq!(wpt.speed, 1.15);
+        assert_eq!(wpt.hdop, 53.5); // not 2.3!
         assert_eq!(wpt.ele, 439.7);
         assert_eq!(wpt.lat, 47.366684);
         assert_eq!(wpt.lon, 8.548398);
