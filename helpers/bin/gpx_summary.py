@@ -3,7 +3,6 @@
 import sys
 import xml.etree.ElementTree as ET
 
-
 def dump_trppt(trkpt):
     #ET.dump(trkpt)
     time=trkpt.find('{http://www.topografix.com/GPX/1/1}time').text
@@ -14,21 +13,13 @@ def dump_trppt(trkpt):
      typ=""
     lon=trkpt.attrib['lon']
     lat=trkpt.attrib['lat']
-    return "%-26s %-10s %10s,%-10s"%(time, typ, lon, lat)
-
-
+    return "%-26s %-10s %9.5f,%9.5f"%(time, typ, float(lon), float(lat))
 
 def parseXML(xmlfile):
-
-    # create element tree object
     tree = ET.parse(xmlfile)
-
-    # get root element
     root = tree.getroot()
-
     x=root.findall('./{http://www.topografix.com/GPX/1/1}trk/{http://www.topografix.com/GPX/1/1}trkseg/')
-    print("%s %s %5d %s"%(dump_trppt(x[0]), dump_trppt(x[-1]), len(x), xmlfile))
-
+    print("%s  %s  %5d %s"%(dump_trppt(x[0]), dump_trppt(x[-1]), len(x), xmlfile))
 
 if __name__ == "__main__":
 

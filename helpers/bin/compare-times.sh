@@ -131,6 +131,8 @@ file_expected="$(mktemp --suffix=-expected)"
 
 ls "$basename"/gpx/*.gpx "$basename"/*.gpx 2>/dev/null >"$expect_filelist" || true
 [ -s "$expect_filelist" ] || panic "No gpx found for comparing"
+expect_filedir="$(head -n1 "$expect_filelist")"
+expect_filedir="${expect_filedir%/*}"
 
 #numgpx="$(ls "$basename"/gpx/*.gpx "$basename"/*.gpx | wc -l)"
 #[ "$numgpx" -ge 1 ]
@@ -141,6 +143,8 @@ mv -v "$out_gpx"/testout-*.gpx gpx-bak/ || true
 ./simtest.sh "$replayfile"
 ls "$out_gpx"/testout-*.gpx >"$sim_filelist"
 [ -s "$sim_filelist" ] || panic "No output files found"
+
+helpers/bin/gpx_summary.py *.gpx "$expect_filedir/"*.gpx
 
 ex="$(wc -l <"$expect_filelist")"
 ac="$(wc -l <"$sim_filelist")"
