@@ -1,4 +1,4 @@
-use chrono::{DateTime, Local, NaiveDate, Utc};
+use chrono::{DateTime, Local, NaiveDate, SecondsFormat, Utc};
 use log::{info, trace};
 use std::fs::File;
 use std::io::{BufWriter, Result, Write};
@@ -48,7 +48,7 @@ impl DatablockEnum {
                 &wpt.lat,
                 &wpt.lon,
                 &wpt.ele,
-                &wpt.time.to_rfc3339(),
+                &wpt.time.to_rfc3339_opts(SecondsFormat::AutoSi, true),
                 if wpt.wpflags != 0 {
                     format!("\n        <type>WpFlag:{}</type>", &wpt.wpflags)
                 } else {
@@ -466,7 +466,7 @@ mod tests {
             "      \
       <trkpt lat=\"47.366684\" lon=\"8.548398\">
         <ele>439.7</ele>
-        <time>2025-07-31T20:08:44.441+00:00</time>
+        <time>2025-07-31T20:08:44.441Z</time>
         <type>WpFlag:18</type>
         <sat>4</sat>
         <hdop>4.2</hdop>
