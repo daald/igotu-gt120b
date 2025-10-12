@@ -144,7 +144,11 @@ mv -v "$out_gpx"/testout-*.gpx gpx-bak/ || true
 ls "$out_gpx"/testout-*.gpx >"$sim_filelist"
 [ -s "$sim_filelist" ] || panic "No output files found"
 
-helpers/bin/gpx_summary.py *.gpx "$expect_filedir/"*.gpx
+set +x
+helpers/bin/gpx_summary.py *.gpx
+echo
+helpers/bin/gpx_summary.py "$expect_filedir/"*.gpx | sort
+set -x
 
 ex="$(wc -l <"$expect_filelist")"
 ac="$(wc -l <"$sim_filelist")"
