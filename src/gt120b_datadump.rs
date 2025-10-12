@@ -64,10 +64,10 @@ impl DatablockEnum {
         Ok(())
     }
 
-    pub fn is_eof(&self) -> bool {
+    pub fn is_new_file(&self) -> bool {
         match self {
-            DatablockEnum::Datablock(wp) => (wp.wpflags & 0x02) != 0,
-            DatablockEnum::PrevMod(_, flags) => (*flags & 0x02) != 0,
+            DatablockEnum::Datablock(wp) => (wp.wpflags & 0x01) != 0,
+            DatablockEnum::NextMod(_, flags) => (*flags & 0x01) != 0,
             _ => false,
         }
     }
@@ -163,13 +163,17 @@ impl Gt120bDataDump {
         self.waypoints.sort_by_key(|a| a.time());
         dump_time_range(&self.waypoints);
 
-        self.transfer_flags_reverse();
+        self.transfer_flags_backward();
         self.transfer_flags_forward();
 
         let mut f_ref: Option<BufWriter<File>> = None;
         let mut filenum = 0;
         for wp in &self.waypoints {
             if let DatablockEnum::Datablock(wpt) = wp {
+                if f_ref.is_some() && wp.is_new_file() {
+                    end_file(f_ref)?;
+                    f_ref = None;
+                }
                 if f_ref.is_some()
                     && conf_change_every_day
                     && need_daychange(&wpt.time, &mut lastday)
@@ -186,10 +190,6 @@ impl Gt120bDataDump {
                     set_daychange(&wpt.time, &mut lastday);
                 }
                 wp.dump(f_ref.as_mut().expect("at this stage, file is always open"))?;
-                if f_ref.is_some() && wp.is_eof() {
-                    end_file(f_ref)?;
-                    f_ref = None;
-                }
             }
         }
         if f_ref.is_some() {
@@ -204,8 +204,10 @@ impl Gt120bDataDump {
         for wp in self.waypoints.iter_mut() {
             match wp {
                 DatablockEnum::NoBlock => {}
-                DatablockEnum::PrevMod(_, _) => {
-                    next_flags = 0;
+                DatablockEnum::PrevMod(_, wpflags) => {
+                    if *wpflags != 0x10 {
+                        next_flags = 0;
+                    }
                 }
                 DatablockEnum::NextMod(_, wpflags) => {
                     next_flags |= *wpflags;
@@ -217,7 +219,7 @@ impl Gt120bDataDump {
             }
         }
     }
-    fn transfer_flags_reverse(&mut self) {
+    fn transfer_flags_backward(&mut self) {
         let mut next_flags = 0u8;
         for wp in self.waypoints.iter_mut().rev() {
             match wp {
@@ -225,8 +227,10 @@ impl Gt120bDataDump {
                 DatablockEnum::PrevMod(_, wpflags) => {
                     next_flags |= *wpflags;
                 }
-                DatablockEnum::NextMod(_, _) => {
-                    next_flags = 0;
+                DatablockEnum::NextMod(_, wpflags) => {
+                    if *wpflags != 0x10 {
+                        next_flags = 0;
+                    }
                 }
                 DatablockEnum::Datablock(wpt) => {
                     wpt.wpflags |= next_flags;
@@ -255,11 +259,16 @@ impl Gt120bDataDump {
 }
 
 fn parse_datablock(value: Vec<u8>) -> DatablockEnum {
-    if value[0] == 0xff {
+    let flagfield = value[0];
+    if flagfield == 0xff {
         // empty data
         return DatablockEnum::NoBlock;
     }
-    if value[0] == 0x50 {
+    if flagfield == 0x02 {
+        // another kind of empty data
+        return DatablockEnum::NoBlock;
+    }
+    if flagfield == 0x50 {
         // block without coordinates
         return DatablockEnum::NoBlock;
     }
@@ -274,19 +283,25 @@ fn parse_datablock(value: Vec<u8>) -> DatablockEnum {
     let mon = ymd >> 16 & 0xf;
     let year = 2000 + value[2] as i32;
 
+    println!("{year:04}-{mon:02}-{day:02}T{hour:02}:{mins:02}:{secs:02} {msecs:3} >> {value:02x?}");
+
     let time = utc_dt_from_ymd_hms_milli(year, mon, day, hour, mins, secs, msecs);
 
-    if value[0] == 0x41 {
+    let flagfield = flagfield & !0x20; // unsure what is 0x20, but it is sometimes there and sometimes not
+    if flagfield == 0x41 {
         // new track, no geo
         return DatablockEnum::NextMod(time, 0x01);
     }
-    if value[0] == 0x42 {
+    if flagfield == 0x42 {
         // switch-off. geo but no waypoint
         return DatablockEnum::PrevMod(time, 0x02); // we could dump this. but orig sw ignores this coords and only takes the flag
     }
-    if value[0] == 0x43 {
+    if flagfield == 0x43 {
         // button pressed, no geo
         return DatablockEnum::NextMod(time, 0x10);
+    }
+    if flagfield != 0x00 {
+        panic!("Unknown data flags: {flagfield:02x} in {value:02x?}")
     }
 
     let sat_used = value[1] & 0x0f;
