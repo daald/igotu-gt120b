@@ -1,4 +1,4 @@
-use chrono::{DateTime, Local, NaiveDate, SecondsFormat, Utc};
+use chrono::{DateTime, Duration, Local, NaiveDate, SecondsFormat, Timelike, Utc};
 use log::{info, trace};
 use std::fs::File;
 use std::io::{BufWriter, Result, Write};
@@ -128,21 +128,34 @@ impl Gt120bDataDump {
             Ok(())
         }
 
-        let mut lastday = NaiveDate::MIN;
-        fn set_daychange(time: &DateTime<Utc>, lastday: &mut NaiveDate) {
+        fn set_daychange(
+            time: &DateTime<Utc>,
+            lastday: &mut NaiveDate,
+            skip_day_change_before_before: &mut DateTime<Utc>,
+        ) {
             let localdatetime: DateTime<Local> = DateTime::from(*time);
             let day = localdatetime.date_naive();
             *lastday = day;
+
+            let until: DateTime<Utc> = time
+                .date_naive()
+                .and_hms_opt(time.hour(), 0, 0)
+                .unwrap()
+                .and_utc()
+                + Duration::hours(4);
+            *skip_day_change_before_before = until;
         }
-        fn need_daychange(time: &DateTime<Utc>, lastday: &mut NaiveDate) -> bool {
+        fn need_daychange(
+            time: &DateTime<Utc>,
+            lastday: &NaiveDate,
+            skip_day_change_before_before: &DateTime<Utc>,
+        ) -> bool {
             let localdatetime: DateTime<Local> = DateTime::from(*time);
             let day = localdatetime.date_naive();
-            if day != *lastday {
-                set_daychange(time, lastday);
-                true
-            } else {
-                false
+            if time <= skip_day_change_before_before {
+                return false;
             }
+            day != *lastday
         }
         fn dump_time_range(waypoints: &Vec<DatablockEnum>) {
             if let Some(t) = waypoints
@@ -166,6 +179,9 @@ impl Gt120bDataDump {
         self.transfer_flags_backward();
         self.transfer_flags_forward();
 
+        let mut lastday = NaiveDate::MIN;
+        let mut skip_day_change_before = DateTime::<Utc>::MIN_UTC;
+
         let mut f_ref: Option<BufWriter<File>> = None;
         let mut filenum = 0;
         for wp in &self.waypoints {
@@ -176,7 +192,7 @@ impl Gt120bDataDump {
                 }
                 if f_ref.is_some()
                     && conf_change_every_day
-                    && need_daychange(&wpt.time, &mut lastday)
+                    && need_daychange(&wpt.time, &lastday, &skip_day_change_before)
                 {
                     end_file(f_ref)?;
                     f_ref = None;
@@ -187,7 +203,7 @@ impl Gt120bDataDump {
                         &format!("testout-{}.gpx", wpt.time.format("%Y-%m-%d_%H-%M")).to_string(),
                         meta_desc,
                     )?;
-                    set_daychange(&wpt.time, &mut lastday);
+                    set_daychange(&wpt.time, &mut lastday, &mut skip_day_change_before);
                 }
                 wp.dump(f_ref.as_mut().expect("at this stage, file is always open"))?;
             }
