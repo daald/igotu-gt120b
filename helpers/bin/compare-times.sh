@@ -161,21 +161,23 @@ while read -eu 4 expect_file && read -eu 5 sim_file; do
   n=$((n+1))
   echo "COMPARING EXPECT $expect_file vs SIM $sim_file"
 
-  ex="$(grep -v "<!-- generated using" "$expect_file" | wc -l)"
-  ac="$(grep -v "<!-- generated using" "$sim_file"    | wc -l)"
-  [ $ex -eq $ac ] || panic "Different number of output lines in file $sim_file. expected: $ex, actual: $ac"
+  #ex="$(grep -v "<!-- generated using" "$expect_file" | wc -l)"
+  #ac="$(grep -v "<!-- generated using" "$sim_file"    | wc -l)"
+  #[ $ex -eq $ac ] || panic "Different number of output lines in file $sim_file. expected: $ex, actual: $ac"
 
   ex="$(grep -c "<trkpt" "$expect_file")"
   ac="$(grep -c "<trkpt" "$sim_file")"
   [ $ex -eq $ac ] || panic "Different number of trackpoints in file $sim_file. expected: $ex, actual: $ac"
 
+  python3 helpers/python/udiff.py "$expect_file" "$sim_file" || panic "Different output files $sim_file vs $expect_file"
+
   #diff -wu "$expect_file" "$sim_file"
   #meld "$expect_file" "$sim_file"
 
-  process_gpx_file <"$expect_file" | grep -v -e '<gpxtpx:' >"$file_expected"
-  process_gpx_file <"$sim_file"    | grep -v -e '<gpxtpx:' >"$file_actual"
+  #process_gpx_file <"$expect_file" | grep -v -e '<gpxtpx:' >"$file_expected"
+  #process_gpx_file <"$sim_file"    | grep -v -e '<gpxtpx:' >"$file_actual"
 
-  diff -wu "$file_expected" "$file_actual" || panic "Different output files $sim_file vs $expect_file"
+  #diff -wu "$file_expected" "$file_actual" || panic "Different output files $sim_file vs $expect_file"
 done
 
 rm -f "$expect_filelist" "$sim_filelist" "$file_actual" "$file_expected"

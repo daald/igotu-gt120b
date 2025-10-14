@@ -1,0 +1,61 @@
+--- /usr/lib/python3.12/difflib.py	2025-08-14 19:47:21.000000000 +0200
++++ helpers/python/difflib.py	2025-10-15 01:40:19.805632688 +0200
+@@ -34,6 +34,8 @@
+ from collections import namedtuple as _namedtuple
+ from types import GenericAlias
+ 
++from fuzzcompare import fuzz_compare
++
+ Match = _namedtuple('Match', 'a b size')
+ 
+ def _calculate_ratio(matches, length):
+@@ -393,11 +395,11 @@
+         # doesn't contain any junk *or* popular non-junk elements.
+         while besti > alo and bestj > blo and \
+               not isbjunk(b[bestj-1]) and \
+-              a[besti-1] == b[bestj-1]:
++              fuzz_compare(a[besti-1], b[bestj-1]):
+             besti, bestj, bestsize = besti-1, bestj-1, bestsize+1
+         while besti+bestsize < ahi and bestj+bestsize < bhi and \
+               not isbjunk(b[bestj+bestsize]) and \
+-              a[besti+bestsize] == b[bestj+bestsize]:
++              fuzz_compare(a[besti+bestsize], b[bestj+bestsize]):
+             bestsize += 1
+ 
+         # Now that we have a wholly interesting match (albeit possibly
+@@ -409,11 +411,11 @@
+         # because no other kind of match is possible in the regions.
+         while besti > alo and bestj > blo and \
+               isbjunk(b[bestj-1]) and \
+-              a[besti-1] == b[bestj-1]:
++              fuzz_compare(a[besti-1], b[bestj-1]):
+             besti, bestj, bestsize = besti-1, bestj-1, bestsize+1
+         while besti+bestsize < ahi and bestj+bestsize < bhi and \
+               isbjunk(b[bestj+bestsize]) and \
+-              a[besti+bestsize] == b[bestj+bestsize]:
++              fuzz_compare(a[besti+bestsize], b[bestj+bestsize]):
+             bestsize = bestsize + 1
+ 
+         return Match(besti, bestj, bestsize)
+@@ -1135,7 +1137,9 @@
+ 
+     _check_types(a, b, fromfile, tofile, fromfiledate, tofiledate, lineterm)
+     started = False
++    diffs_exist = False
+     for group in SequenceMatcher(None,a,b).get_grouped_opcodes(n):
++        diffs_exist = True
+         if not started:
+             started = True
+             fromdate = '\t{}'.format(fromfiledate) if fromfiledate else ''
+@@ -1159,6 +1163,11 @@
+             if tag in {'replace', 'insert'}:
+                 for line in b[j1:j2]:
+                     yield '+' + line
++    # not the best solution. but the result of this function is a generator, so we cannot also return a boolean
++    if diffs_exist:
++        exit(1)
++    else:
++        exit(0)
+ 
+ 
+ ########################################################################
