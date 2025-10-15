@@ -17,11 +17,17 @@ struct Waypoint {
     lon: f32,
 }
 
+#[derive(Debug, PartialEq)]
+enum ButtonEnum {
+    On,
+    Off,
+    Trigger,
+}
+
 #[derive(Debug)]
 enum DatablockEnum {
     Datablock(Waypoint),
-    PrevMod(DateTime<Utc>, u8),
-    NextMod(DateTime<Utc>, u8),
+    Button(DateTime<Utc>, ButtonEnum),
     NoBlock,
 }
 
@@ -67,15 +73,14 @@ impl DatablockEnum {
     pub fn is_new_file(&self) -> bool {
         match self {
             DatablockEnum::Datablock(wp) => (wp.wpflags & 0x01) != 0,
-            DatablockEnum::NextMod(_, flags) => (*flags & 0x01) != 0,
+            DatablockEnum::Button(_, typ) => matches!(*typ, ButtonEnum::On),
             _ => false,
         }
     }
     pub fn time(&self) -> DateTime<Utc> {
         match self {
             DatablockEnum::Datablock(wp) => wp.time,
-            DatablockEnum::PrevMod(time, _) => *time,
-            DatablockEnum::NextMod(time, _) => *time,
+            DatablockEnum::Button(time, _) => *time,
             DatablockEnum::NoBlock => DateTime::UNIX_EPOCH,
         }
     }
@@ -220,14 +225,17 @@ impl Gt120bDataDump {
         for wp in self.waypoints.iter_mut() {
             match wp {
                 DatablockEnum::NoBlock => {}
-                DatablockEnum::PrevMod(_, wpflags) => {
-                    if *wpflags != 0x10 {
+                DatablockEnum::Button(_, typ) => match typ {
+                    ButtonEnum::On => {
+                        next_flags |= 0x01;
+                    }
+                    ButtonEnum::Off => {
                         next_flags = 0;
                     }
-                }
-                DatablockEnum::NextMod(_, wpflags) => {
-                    next_flags |= *wpflags;
-                }
+                    ButtonEnum::Trigger => {
+                        next_flags |= 0x10;
+                    }
+                },
                 DatablockEnum::Datablock(wpt) => {
                     wpt.wpflags |= next_flags;
                     next_flags = 0;
@@ -240,14 +248,15 @@ impl Gt120bDataDump {
         for wp in self.waypoints.iter_mut().rev() {
             match wp {
                 DatablockEnum::NoBlock => {}
-                DatablockEnum::PrevMod(_, wpflags) => {
-                    next_flags |= *wpflags;
-                }
-                DatablockEnum::NextMod(_, wpflags) => {
-                    if *wpflags != 0x10 {
+                DatablockEnum::Button(_, typ) => match typ {
+                    ButtonEnum::On => {
                         next_flags = 0;
                     }
-                }
+                    ButtonEnum::Off => {
+                        next_flags |= 0x02;
+                    }
+                    ButtonEnum::Trigger => {}
+                },
                 DatablockEnum::Datablock(wpt) => {
                     wpt.wpflags |= next_flags;
                     next_flags = 0;
@@ -306,15 +315,15 @@ fn parse_datablock(value: Vec<u8>) -> DatablockEnum {
     let flagfield = flagfield & !0x20; // unsure what is 0x20, but it is sometimes there and sometimes not
     if flagfield == 0x41 {
         // new track, no geo
-        return DatablockEnum::NextMod(time, 0x01);
+        return DatablockEnum::Button(time, ButtonEnum::On);
     }
     if flagfield == 0x42 {
         // switch-off. geo but no waypoint
-        return DatablockEnum::PrevMod(time, 0x02); // we could dump this. but orig sw ignores this coords and only takes the flag
+        return DatablockEnum::Button(time, ButtonEnum::Off); // we could dump this. but orig sw ignores this coords and only takes the flag
     }
     if flagfield == 0x43 {
         // button pressed, no geo
-        return DatablockEnum::NextMod(time, 0x10);
+        return DatablockEnum::Button(time, ButtonEnum::Trigger);
     }
     if flagfield != 0x00 {
         panic!("Unknown data flags: {flagfield:02x} in {value:02x?}")
@@ -382,12 +391,12 @@ mod tests {
         let result = parse_datablock(input);
 
         println!("{:?}", result);
-        assert!(matches!(result, DatablockEnum::NextMod(_, _)));
-        let DatablockEnum::NextMod(time, flags) = result else {
+        assert!(matches!(result, DatablockEnum::Button(_, _)));
+        let DatablockEnum::Button(time, typ) = result else {
             panic!("Invalid result type")
         };
         assert_eq!(time, utc_dt_from_ymd_hms_milli(2025, 7, 31, 20, 5, 5, 620));
-        assert_eq!(flags, 0x01);
+        assert_eq!(typ, ButtonEnum::On);
     }
 
     #[test]
@@ -397,12 +406,12 @@ mod tests {
         let result = parse_datablock(input);
 
         println!("{:?}", result);
-        assert!(matches!(result, DatablockEnum::PrevMod(_, _)));
-        let DatablockEnum::PrevMod(time, flags) = result else {
+        assert!(matches!(result, DatablockEnum::Button(_, _)));
+        let DatablockEnum::Button(time, typ) = result else {
             panic!("Invalid result type")
         };
         assert_eq!(time, utc_dt_from_ymd_hms_milli(2025, 7, 31, 20, 8, 46, 441));
-        assert_eq!(flags, 0x02);
+        assert_eq!(typ, ButtonEnum::Off);
     }
 
     #[test]
@@ -464,12 +473,12 @@ mod tests {
         let result = parse_datablock(input);
 
         println!("{:?}", result);
-        assert!(matches!(result, DatablockEnum::NextMod(_, _)));
-        let DatablockEnum::NextMod(time, flags) = result else {
+        assert!(matches!(result, DatablockEnum::Button(_, _)));
+        let DatablockEnum::Button(time, typ) = result else {
             panic!("Invalid result type")
         };
         assert_eq!(time, utc_dt_from_ymd_hms_milli(2025, 7, 31, 20, 7, 57, 457));
-        assert_eq!(flags, 0x10);
+        assert_eq!(typ, ButtonEnum::Trigger);
     }
 
     #[test]
