@@ -28,6 +28,7 @@ enum ButtonEnum {
 enum DatablockEnum {
     Datablock(Waypoint),
     Button(DateTime<Utc>, ButtonEnum),
+    ButtonWithoutTime(ButtonEnum),
     NoBlock,
 }
 
@@ -81,7 +82,16 @@ impl DatablockEnum {
         match self {
             DatablockEnum::Datablock(wp) => wp.time,
             DatablockEnum::Button(time, _) => *time,
-            DatablockEnum::NoBlock => DateTime::UNIX_EPOCH,
+            DatablockEnum::ButtonWithoutTime(_) => panic!("No time available"),
+            DatablockEnum::NoBlock => panic!("No time available"),
+        }
+    }
+    pub fn time_opt(&self) -> Option<DateTime<Utc>> {
+        match self {
+            DatablockEnum::Datablock(wp) => Some(wp.time),
+            DatablockEnum::Button(time, _) => Some(*time),
+            DatablockEnum::ButtonWithoutTime(_) => None,
+            DatablockEnum::NoBlock => None,
         }
     }
 }
@@ -102,6 +112,7 @@ impl Gt120bDataDump {
         assert_eq!(0, data.len() % structsize);
         self.parse_data(data);
     }
+
     pub fn write_out(&mut self, conf_change_every_day: bool, meta_desc: &String) -> Result<usize> {
         fn start_file(name: &str, meta_desc: &String) -> Result<Option<BufWriter<File>>> {
             info!("Writing gpx file {name}");
@@ -162,27 +173,8 @@ impl Gt120bDataDump {
             }
             day != *lastday
         }
-        fn dump_time_range(waypoints: &Vec<DatablockEnum>) {
-            if let Some(t) = waypoints
-                .iter()
-                .find(|&wp| matches!(wp, DatablockEnum::Datablock(_)))
-            {
-                info!("  Earliest waypoint received: {}", t.time().to_rfc3339());
-            }
-            if let Some(t) = waypoints
-                .iter()
-                .rev()
-                .find(|&wp| matches!(wp, DatablockEnum::Datablock(_)))
-            {
-                info!("  Latest waypoint received:   {}", t.time().to_rfc3339());
-            }
-        }
 
-        self.waypoints.sort_by_key(|a| a.time());
-        dump_time_range(&self.waypoints);
-
-        self.transfer_flags_backward();
-        self.transfer_flags_forward();
+        self.prepare_data();
 
         let mut lastday = NaiveDate::MIN;
         let mut skip_day_change_before = DateTime::<Utc>::MIN_UTC;
@@ -220,22 +212,58 @@ impl Gt120bDataDump {
         Ok(filenum)
     }
 
+    pub fn prepare_data(&mut self) {
+        fn dump_time_range(waypoints: &Vec<DatablockEnum>) {
+            if let Some(t) = waypoints
+                .iter()
+                .find(|&wp| matches!(wp, DatablockEnum::Datablock(_)))
+            {
+                info!("  Earliest waypoint received: {}", t.time().to_rfc3339());
+            }
+            if let Some(t) = waypoints
+                .iter()
+                .rev()
+                .find(|&wp| matches!(wp, DatablockEnum::Datablock(_)))
+            {
+                info!("  Latest waypoint received:   {}", t.time().to_rfc3339());
+            }
+        }
+
+        //        self.waypoints.sort_by_key(|a| a.time());
+        assert!(
+            self.waypoints
+                .iter()
+                .map(|w| w.time_opt())
+                .filter(|t| t.is_some())
+                .map(|t| t.unwrap())
+                .collect::<Vec<_>>()
+                .windows(2)
+                .all(|w| w[0] <= w[1])
+        );
+        dump_time_range(&self.waypoints);
+
+        self.transfer_flags_forward();
+        self.transfer_flags_backward();
+    }
+
     fn transfer_flags_forward(&mut self) {
         let mut next_flags = 0u8;
         for wp in self.waypoints.iter_mut() {
             match wp {
                 DatablockEnum::NoBlock => {}
-                DatablockEnum::Button(_, typ) => match typ {
-                    ButtonEnum::On => {
-                        next_flags |= 0x01;
+                DatablockEnum::Button(_, typ) | DatablockEnum::ButtonWithoutTime(typ) => {
+                    match typ {
+                        ButtonEnum::On => {
+                            next_flags |= 0x01;
+                        }
+                        ButtonEnum::Off => {
+                            next_flags = 0;
+                        }
+                        ButtonEnum::Trigger => {
+                            next_flags |= 0x10;
+                        }
                     }
-                    ButtonEnum::Off => {
-                        next_flags = 0;
-                    }
-                    ButtonEnum::Trigger => {
-                        next_flags |= 0x10;
-                    }
-                },
+                }
                 DatablockEnum::Datablock(wpt) => {
                     wpt.wpflags |= next_flags;
                     next_flags = 0;
@@ -248,15 +276,17 @@ impl Gt120bDataDump {
         for wp in self.waypoints.iter_mut().rev() {
             match wp {
                 DatablockEnum::NoBlock => {}
-                DatablockEnum::Button(_, typ) => match typ {
-                    ButtonEnum::On => {
-                        next_flags = 0;
+                DatablockEnum::Button(_, typ) | DatablockEnum::ButtonWithoutTime(typ) => {
+                    match typ {
+                        ButtonEnum::On => {
+                            //next_flags = 0;
+                        }
+                        ButtonEnum::Off => {
+                            next_flags |= 0x02;
+                        }
+                        ButtonEnum::Trigger => {}
                     }
-                    ButtonEnum::Off => {
-                        next_flags |= 0x02;
-                    }
-                    ButtonEnum::Trigger => {}
-                },
+                }
                 DatablockEnum::Datablock(wpt) => {
                     wpt.wpflags |= next_flags;
                     next_flags = 0;
@@ -290,8 +320,7 @@ fn parse_datablock(value: Vec<u8>) -> DatablockEnum {
         return DatablockEnum::NoBlock;
     }
     if flagfield == 0x02 {
-        // another kind of empty data
-        return DatablockEnum::NoBlock;
+        return DatablockEnum::ButtonWithoutTime(ButtonEnum::Off);
     }
     if flagfield == 0x50 {
         // block without coordinates
