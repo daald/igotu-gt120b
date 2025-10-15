@@ -229,7 +229,8 @@ impl Gt120bDataDump {
             }
         }
 
-        //        self.waypoints.sort_by_key(|a| a.time());
+        // not sorting, but check if sorted. Problems are the ButtonWithoutTime
+        //self.waypoints.sort_by_key(|a| a.time());
         assert!(
             self.waypoints
                 .iter()
