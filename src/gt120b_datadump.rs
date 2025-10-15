@@ -279,7 +279,7 @@ impl Gt120bDataDump {
                 DatablockEnum::Button(_, typ) | DatablockEnum::ButtonWithoutTime(typ) => {
                     match typ {
                         ButtonEnum::On => {
-                            //next_flags = 0;
+                            next_flags = 0;
                         }
                         ButtonEnum::Off => {
                             next_flags |= 0x02;
