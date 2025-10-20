@@ -43,7 +43,7 @@ impl Intf for IntfBulk {
         trace!("  awaiting answer");
         let mut answer = self.read_answer(&mut reader);
 
-        let payloadsize: u16 = u16::from_be_bytes(answer[1..3].try_into().unwrap());
+        let payloadsize = u16::from_be_bytes(answer[1..3].try_into().unwrap());
         while answer.len() < payloadsize as usize + 4 {
             trace!("  waiting for more data");
             answer.append(&mut self.read_answer(&mut reader));
@@ -135,10 +135,15 @@ impl IntfBulk {
         (device, di, interface)
     }
 
-    fn read_answer(&mut self, in_queue: &mut EndpointRead<Bulk>) -> Vec<u8> {
-        let mut buf = Vec::new();
-        in_queue.read_to_end(&mut buf).unwrap();
-        buf
+    fn read_answer(&mut self, reader: &mut EndpointRead<Bulk>) -> Vec<u8> {
+        let mut result = vec![0; 4];
+        reader.read_exact(&mut result).unwrap();
+        let payloadsize = u16::from_be_bytes(result[1..3].try_into().unwrap());
+
+        let mut buf = vec![0; payloadsize.into()];
+        reader.read_exact(&mut buf).unwrap();
+        result.extend_from_slice(&buf);
+        result
     }
 
     /**
