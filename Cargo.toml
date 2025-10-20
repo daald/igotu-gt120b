@@ -7,7 +7,7 @@ edition = "2024"
 [dependencies]
 nusb = "0.1.14"
 #TODO nusb = "0.2.0-beta"
-futures-lite = "1.13.0"
+futures-lite = "2.6.1"
 env_logger = "0.11.8"
 log = "0.4.28"
 hex-literal = "1.0.0"
