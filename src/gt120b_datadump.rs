@@ -234,8 +234,7 @@ impl Gt120bDataDump {
         assert!(
             self.waypoints
                 .iter()
-                .map(|w| w.time_opt())
-                .flatten()
+                .filter_map(|w| w.time_opt())
                 .collect::<Vec<_>>()
                 .windows(2)
                 .all(|w| w[0] <= w[1])
