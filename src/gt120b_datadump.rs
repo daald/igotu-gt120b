@@ -321,6 +321,7 @@ fn parse_datablock(value: Vec<u8>) -> DatablockEnum {
     if flagfield == 0x02 {
         return DatablockEnum::ButtonWithoutTime(ButtonEnum::Off);
     }
+    let flagfield = flagfield & !0x20; // unsure what is 0x20, but it is sometimes there and sometimes not
     if flagfield == 0x50 {
         // block without coordinates
         return DatablockEnum::NoBlock;
@@ -340,7 +341,6 @@ fn parse_datablock(value: Vec<u8>) -> DatablockEnum {
 
     let time = utc_dt_from_ymd_hms_milli(year, mon, day, hour, mins, secs, msecs);
 
-    let flagfield = flagfield & !0x20; // unsure what is 0x20, but it is sometimes there and sometimes not
     if flagfield == 0x41 {
         // new track, no geo
         return DatablockEnum::Button(time, ButtonEnum::On);

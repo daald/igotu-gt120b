@@ -1,7 +1,10 @@
-use futures_lite::future::block_on;
 use log::{info, trace};
-use nusb::transfer::{ControlOut, ControlType, Queue, Recipient, RequestBuffer};
-use nusb::{Device, DeviceInfo, Interface};
+use nusb::io::EndpointRead;
+use nusb::transfer::{Bulk, ControlOut, ControlType, In, Out, Recipient};
+use nusb::{Device, DeviceInfo, Interface, MaybeFuture};
+use std::io::{Read, Write};
+use std::time::Duration;
+
 use std::time::SystemTime;
 use std::{thread, time};
 
@@ -23,35 +26,47 @@ pub struct IntfBulk {
 
 impl Intf for IntfBulk {
     fn send_and_receive(&mut self, to_device: Vec<u8>) -> Vec<u8> {
-        let mut queue = self.interface.bulk_in_queue(BULK_EP_IN);
+        let mut reader = self
+            .interface
+            .endpoint::<Bulk, In>(BULK_EP_IN)
+            .unwrap()
+            .reader(4096);
+        let mut writer = self
+            .interface
+            .endpoint::<Bulk, Out>(BULK_EP_OUT)
+            .unwrap()
+            .writer(4096);
 
-        block_on(self.interface.bulk_out(BULK_EP_OUT, to_device))
-            .into_result()
-            .unwrap();
+        writer.write_all(&to_device).unwrap();
+        writer.flush_end().unwrap();
 
         trace!("  awaiting answer");
-        let mut answer = self.read_answer(&mut queue);
+        let mut answer = self.read_answer(&mut reader);
 
         let payloadsize: u16 = u16::from_be_bytes(answer[1..3].try_into().unwrap());
         while answer.len() < payloadsize as usize + 4 {
             trace!("  waiting for more data");
-            answer.append(&mut self.read_answer(&mut queue));
+            answer.append(&mut self.read_answer(&mut reader));
         }
 
         answer
     }
 
     fn cmd_oneway_devicereset(&mut self, to_device: Vec<u8>) {
-        block_on(self.interface.bulk_out(BULK_EP_OUT, to_device))
-            .into_result()
-            .unwrap();
+        let mut writer = self
+            .interface
+            .endpoint::<Bulk, Out>(BULK_EP_OUT)
+            .unwrap()
+            .writer(4096);
+        writer.write_all(&to_device).unwrap();
+        writer.flush().unwrap();
 
         info!("Wait for device reset. It will shortly disconnect from USB");
         let (device, device_info, interface) =
             Self::setup_device_and_interface(true, self.bus_id, self.device_id);
         self.device = device;
         self.interface = interface;
-        self.bus_id = device_info.bus_number();
+        self.bus_id = device_info.busnum();
         self.device_id = device_info.device_address();
     }
 
@@ -70,7 +85,7 @@ impl IntfBulk {
         Self {
             device,
             interface,
-            bus_id: device_info.bus_number(),
+            bus_id: device_info.busnum(),
             device_id: device_info.device_address(),
         }
     }
@@ -78,7 +93,7 @@ impl IntfBulk {
     fn wait_for_deviceinfo(wait: bool, bus_id: u8, device_id: u8) -> DeviceInfo {
         let mut sleep_time = 1000;
         loop {
-            let di_opt = nusb::list_devices().unwrap().find(|d| {
+            let di_opt = nusb::list_devices().wait().unwrap().find(|d| {
                 d.vendor_id() == DEVID_VENDOR
                     && d.product_id() == DEVID_PRODUCT
                     && match_partially_last_device(d, bus_id, device_id)
@@ -110,22 +125,20 @@ impl IntfBulk {
 
         info!("USB Device info: {di:?}");
 
-        let mut device = di.open().unwrap();
-        let interface = device.detach_and_claim_interface(DEVICE_INTERFACE).unwrap();
+        let mut device = di.open().wait().unwrap();
+        let interface = device
+            .detach_and_claim_interface(DEVICE_INTERFACE)
+            .wait()
+            .unwrap();
 
         Self::ctrl_set_line_state(&mut device);
         (device, di, interface)
     }
 
-    fn read_answer(&mut self, in_queue: &mut Queue<RequestBuffer>) -> Vec<u8> {
-        while in_queue.pending() < 8 {
-            in_queue.submit(RequestBuffer::new(256));
-        }
-        let result = block_on(in_queue.next_complete());
-
-        result.status.expect("Error while reading from USB");
-
-        result.data
+    fn read_answer(&mut self, in_queue: &mut EndpointRead<Bulk>) -> Vec<u8> {
+        let mut buf = Vec::new();
+        in_queue.read_to_end(&mut buf).unwrap();
+        buf
     }
 
     /**
@@ -133,16 +146,20 @@ impl IntfBulk {
     */
     fn ctrl_set_line_state(device: &mut Device) {
         println!("Send ctrl_set_line_state");
-        block_on(device.control_out(ControlOut {
-            control_type: ControlType::Class,
-            recipient: Recipient::Device,
-            request: 0x22, /* set line state*/
-            value: 0x03,
-            index: 0x00,
-            data: &[],
-        }))
-        .into_result()
-        .unwrap();
+        device
+            .control_out(
+                ControlOut {
+                    control_type: ControlType::Class,
+                    recipient: Recipient::Device,
+                    request: 0x22, /* set line state*/
+                    value: 0x03,
+                    index: 0x00,
+                    data: &[],
+                },
+                Duration::from_secs(3),
+            )
+            .wait()
+            .unwrap();
     }
 }
 
@@ -154,5 +171,5 @@ fn match_partially_last_device(devicepath: &DeviceInfo, bus_id: u8, device_id: u
         // no filter
         return true;
     }
-    devicepath.bus_number() == bus_id && devicepath.device_address() != device_id
+    devicepath.busnum() == bus_id && devicepath.device_address() != device_id
 }
