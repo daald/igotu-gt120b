@@ -213,7 +213,7 @@ impl Gt120bDataDump {
     }
 
     pub fn prepare_data(&mut self) {
-        fn dump_time_range(waypoints: &Vec<DatablockEnum>) {
+        fn dump_time_range(waypoints: &[DatablockEnum]) {
             if let Some(t) = waypoints
                 .iter()
                 .find(|&wp| matches!(wp, DatablockEnum::Datablock(_)))
@@ -235,8 +235,7 @@ impl Gt120bDataDump {
             self.waypoints
                 .iter()
                 .map(|w| w.time_opt())
-                .filter(|t| t.is_some())
-                .map(|t| t.unwrap())
+                .flatten()
                 .collect::<Vec<_>>()
                 .windows(2)
                 .all(|w| w[0] <= w[1])
