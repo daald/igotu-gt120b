@@ -17,13 +17,9 @@ use clap::Parser;
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
-    /// Clear memory of device after successfully downloading and writing gpx files
+    /// Clear device memory after successfully downloading and writing gpx files
     #[arg(short, long, default_value_t = false)]
     clear: bool,
-
-    /// Number of times to greet
-    //#[arg(short, long, default_value_t = 1)]
-    //count: u8,
 
     /// Run some more commands to match replay file
     #[arg(short, long, default_value_t = false)]
@@ -32,9 +28,17 @@ struct Args {
     #[arg(long, default_value_t = true)]
     orig_sw_equivalent: bool,
 
-    /// Filename of simulation replay file
+    /// Simulate using specified replay file instead of real hardware access
     #[arg(short, long)]
     sim_file_name: Option<String>,
+
+    /// filename part on the left side of the date
+    #[arg(long, default_value = "")]
+    prefix: String,
+
+    /// filename part on the right side of the date
+    #[arg(long, default_value = "")]
+    suffix: String,
 }
 
 fn main() {
@@ -57,6 +61,8 @@ fn main() {
         args.bestreplay,
         args.clear,
         args.orig_sw_equivalent,
+        args.prefix,
+        args.suffix,
     );
 
     println!("Completed.");

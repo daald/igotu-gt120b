@@ -98,12 +98,16 @@ impl DatablockEnum {
 
 pub struct Gt120bDataDump {
     waypoints: Vec<DatablockEnum>,
+    conf_prefix: String,
+    conf_suffix: String,
 }
 
 impl Gt120bDataDump {
-    pub fn new() -> Self {
+    pub fn new(prefix: String, suffix: String) -> Self {
         Gt120bDataDump {
             waypoints: Vec::new(),
+            conf_prefix: prefix,
+            conf_suffix: suffix,
         }
     }
 
@@ -197,7 +201,13 @@ impl Gt120bDataDump {
                 if f_ref.is_none() {
                     filenum += 1;
                     f_ref = start_file(
-                        &format!("testout-{}.gpx", wpt.time.format("%Y-%m-%d_%H-%M")).to_string(),
+                        &format!(
+                            "{}{}{}.gpx",
+                            self.conf_prefix,
+                            wpt.time.format("%Y-%m-%d_%H-%M"),
+                            self.conf_suffix
+                        )
+                        .to_string(),
                         meta_desc,
                     )?;
                     set_daychange(&wpt.time, &mut lastday, &mut skip_day_change_before);

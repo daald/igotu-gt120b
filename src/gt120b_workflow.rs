@@ -14,6 +14,8 @@ pub fn workflow(
     conf_orig_sw_behav: bool,
     conf_clear: bool,
     conf_orig_sw_equivalent: bool,
+    conf_prefix: String,
+    conf_suffix: String,
 ) {
     // set line coding request - probably not needed
     //sync_send_control(handle, 0x21, 0x20 /* set line coding*/, 0, 0, "\x00\xc2\x01\x00\x00\x00\x08", 7, 2000 );
@@ -53,7 +55,7 @@ pub fn workflow(
     let (end_offset, all_begin_empty) = cmdblock_find_end_offset(comm, id_offset);
 
     info!("Start downloading data");
-    let mut datadumper = Gt120bDataDump::new();
+    let mut datadumper = Gt120bDataDump::new(conf_prefix, conf_suffix);
     let mut datadumper_ref = Some(&mut datadumper);
     let mut offset = 0x1000;
     while offset < end_offset {
