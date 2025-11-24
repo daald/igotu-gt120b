@@ -21,23 +21,24 @@ struct Args {
     #[arg(short, long, default_value_t = false)]
     clear: bool,
 
-    /// Run some more commands to match replay file
-    #[arg(short, long, default_value_t = false)]
-    bestreplay: bool,
+    /// Run some extra commands without known purpose to match replay file
+    #[arg(long, default_value_t = false)]
+    orig_sw_workflow: bool,
 
+    /// Use the exact same meta format as the original software. By default, the format is more verbose and not base64 encoded
     #[arg(long, default_value_t = true)]
-    orig_sw_equivalent: bool,
+    orig_sw_meta: bool,
 
     /// Simulate using specified replay file instead of real hardware access
-    #[arg(short, long)]
+    #[arg(long)]
     sim_file_name: Option<String>,
 
-    /// filename part on the left side of the date
-    #[arg(long, default_value = "")]
+    /// filename part on the left side of the date, including optional path
+    #[arg(short, long, default_value = "")]
     prefix: String,
 
     /// filename part on the right side of the date
-    #[arg(long, default_value = "")]
+    #[arg(short, long, default_value = "")]
     suffix: String,
 }
 
@@ -58,9 +59,9 @@ fn main() {
 
     workflow(
         &mut comm,
-        args.bestreplay,
         args.clear,
-        args.orig_sw_equivalent,
+        args.orig_sw_workflow,
+        args.orig_sw_meta,
         args.prefix,
         args.suffix,
     );

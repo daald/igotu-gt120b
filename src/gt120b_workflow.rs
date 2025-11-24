@@ -11,16 +11,16 @@ use log::{debug, info, trace};
 
 pub fn workflow(
     comm: &mut CommBulk,
-    conf_orig_sw_behav: bool,
     conf_clear: bool,
-    conf_orig_sw_equivalent: bool,
+    conf_orig_sw_workflow: bool,
+    conf_orig_sw_meta: bool,
     conf_prefix: String,
     conf_suffix: String,
 ) {
     // set line coding request - probably not needed
     //sync_send_control(handle, 0x21, 0x20 /* set line coding*/, 0, 0, "\x00\xc2\x01\x00\x00\x00\x08", 7, 2000 );
 
-    let (id_model, id_offset, mut id_struct) = cmdblock_identify(comm, conf_orig_sw_equivalent);
+    let (id_model, id_offset, mut id_struct) = cmdblock_identify(comm, conf_orig_sw_meta);
     assert_eq!(id_model, Model::Gt120);
 
     let read8_payload = cmd_read(comm, 0x1fff80, 0x0008); // from data dump of original software. no clue what is expected here // TODO force all FFs?
@@ -33,7 +33,7 @@ pub fn workflow(
         panic!("Unknown device state. needs more debugging/development");
     }
 
-    if conf_orig_sw_behav {
+    if conf_orig_sw_workflow {
         // this block was introduced because the original sw does these calls, and I want to have a 100% identical replay for quality reasons.
         // but actually, I don't know what is done here and why. maybe it's an artifact of the incremental algorighm of the original software
         // (if you don't delete your data, already loaded data get skipped on next read, with the help of a local state storage)
@@ -84,7 +84,7 @@ pub fn workflow(
 
     if let Some(ref mut datadumper) = datadumper_ref {
         let conf_change_every_day: bool = true;
-        let meta_desc = if conf_orig_sw_behav {
+        let meta_desc = if conf_orig_sw_meta {
             let json_str_compact = serde_json::to_string(&id_struct).unwrap();
             BASE64_STANDARD.encode(json_str_compact)
         } else {
@@ -110,7 +110,7 @@ pub fn workflow(
     // here: device reboots itself without returning an answer. not that it will disconnect and needs to be reconnected afterwards for making sure the delete was successful
     info!("Waiting for device reconnect");
 
-    let (id2_model, _id2_offset, id2_struct) = cmdblock_identify(comm, conf_orig_sw_equivalent);
+    let (id2_model, _id2_offset, id2_struct) = cmdblock_identify(comm, conf_orig_sw_meta);
     // check everything except offset
     assert_eq!(id_model, id2_model);
     id_struct.alias = id2_struct.alias.clone(); // fix value for comparing in the following line
@@ -170,7 +170,7 @@ fn cmdblock_find_end_offset(comm: &mut CommBulk, id_offset: u32) -> (u32, bool) 
 
 fn cmdblock_identify(
     comm: &mut CommBulk,
-    conf_orig_sw_equivalent: bool,
+    conf_orig_sw_meta: bool,
 ) -> (Model, u32, IdentificationJson) {
     debug!("cmdblock_identify()");
 
@@ -182,7 +182,7 @@ fn cmdblock_identify(
     println!("Model: {model}");
 
     // IdentificationCommand
-    let id_struct = cmd_identification(comm, conf_orig_sw_equivalent);
+    let id_struct = cmd_identification(comm, conf_orig_sw_meta);
 
     // CountCommand
     let offset = cmd_count(comm);

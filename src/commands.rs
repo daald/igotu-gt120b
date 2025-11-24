@@ -60,10 +60,7 @@ pub struct IdentificationJson {
     description: String,
 }
 
-pub fn cmd_identification(
-    comm: &mut CommBulk,
-    conf_orig_sw_equivalent: bool,
-) -> IdentificationJson {
+pub fn cmd_identification(comm: &mut CommBulk, conf_orig_sw_meta: bool) -> IdentificationJson {
     debug!("Send cmd_identification");
     let command: Vec<u8> = hex!["930a"].to_vec();
 
@@ -95,7 +92,7 @@ pub fn cmd_identification(
     };
 
     let id_struct = IdentificationJson {
-        manufacturer: if conf_orig_sw_equivalent {
+        manufacturer: if conf_orig_sw_meta {
             "".to_owned()
         } else {
             "mobileaction //TODO".to_owned()
