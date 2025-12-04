@@ -25,6 +25,14 @@ Download and wipe device
 ## More documentation
 * [Further development plans](doc/DevelopmentPlans.md)
 
+## Tool safety
+Status: Working. I didn't heavily test with devices, but I tested a lot using recorded sessions of the original software, so I can say I'm quite sure that this device will not behave differently than the original software.
+
+The tool only deletes data from the device if everything was downloaded and saved successfully to disk AND the option `--clear` is activated. In any error case, the tool stops before starting the delete procedure.
+Anyways, there's always a little risk on free software, actually _every_ software, that something goes wrong.
+
+If in doubt, do a first run without the `--clear` option and check the output.
+
 ## Credits
 Many thanks to [igotu2gpx](https://launchpad.net/igotu2gpx) which is the open source implementation for the older version of this device, GT-120 (without B). It helped me understanding the protocol, but I copied only very few codelines (e.g. checksum calculation) from there.
 

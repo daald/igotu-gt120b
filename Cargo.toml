@@ -1,6 +1,6 @@
 [package]
-name = "igotu-gt120"
-version = "0.1.0"
+name = "igotu-gt120b"
+version = "0.2.0"
 authors = ["Daniel Alder"]
 edition = "2024"
 
