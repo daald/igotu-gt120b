@@ -10,19 +10,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cargo/bin/
-          ~/.cargo/registry/index/
-          ~/.cargo/registry/cache/
-          ~/.cargo/git/db/
-          target/
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    #- uses: actions/cache@v4    # chache configured by setup-rust-toolchain
+    #  with:
+    #    path: |
+    #      ~/.cargo/bin/
+    #      ~/.cargo/registry/index/
+    #      ~/.cargo/registry/cache/
+    #      ~/.cargo/git/db/
+    #      target/
+    #    key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
     - uses: actions-rust-lang/setup-rust-toolchain@v1
       with:
-        toolchain: nightly
-        components: cargo-fmt, clippy, outdated, udeps, audit, pants
+        components: rustfmt, clippy
+
+    - name: binstall
+      run: |
+        [ -x /root/.cargo/bin/cargo-binstall ] || curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+        [ -x /root/.cargo/bin/cargo-outdated ] || cargo binstall --no-confirm --force cargo-outdated cargo-audit cargo-pants
 
     - run: cargo build --release
 
@@ -34,18 +38,17 @@ jobs:
 
     - run: cargo clippy -- -D warnings
 
-    - uses: EmbarkStudios/cargo-deny-action@v2
+    - run: "cargo outdated --exit-code 1"
 
-    - run: cargo outdated --exit-code 1
-
-    - run: cargo udeps
-
-    #- run: rm -rf ~/.cargo/advisory-db
     - run: cargo audit
 
     - run: cargo pants
 
-    - uses: actions/upload-artifact@v4
+    - uses: EmbarkStudios/cargo-deny-action@v2
       with:
-        name: igotu-gt120
-        path: target/release/igotu-gt120
+        command: check bans sources
+
+    - uses: actions/upload-artifact@v3
+      with:
+        name: igotu-gt120b
+        path: target/release/igotu-gt120b

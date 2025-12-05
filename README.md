@@ -16,11 +16,11 @@ Links to hardware info:
 
 Download without deleting data from device (download-only, repeatable):
 
-    igotu-gt120
+    igotu-gt120b
 
 Download and wipe device
 
-    igotu-gt120 --clear
+    igotu-gt120b --clear
 
 ## More documentation
 * [Further development plans](doc/DevelopmentPlans.md)
