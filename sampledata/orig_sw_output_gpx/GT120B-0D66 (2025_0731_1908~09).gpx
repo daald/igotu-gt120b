@@ -1,0 +1,58 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<gpx version="1.1" creator="igotU_GPS_WIN" xmlns:gpxx="http://www.garmin.com/xmlschemas/GpxExtensions/v3" xmlns:gpxwpx="http://www.garmin.com/xmlschemas/WaypointExtension/v1" xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v2" xmlns:mat="http://www.mobileaction.com/xmlschemas/TrackPointExtension/v2" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <desc>eyJNYW51ZmFjdHVyZXIiOiIiLCJNb2RlbCI6MTAsIkRldmljZUlEIjoiMDAxMC0wMDE4OEM3MTBENjYiLCJOYW1lIjoiR1QxMjBCLTBENjYiLCJBbGlhcyI6IkdUMTIwQi0wRDY2IiwiU2VyaWFsTnVtYmVyIjoiMTAwMjI0NjAwOTk4IiwiSFdWZXJzaW9uIjoiIiwiRldWZXJzaW9uIjoiMS4yLjIzMTAxMyIsIlNXVmVyc2lvbiI6Im5vdCBpbnN0YWxsZWQiLCJEZXNjcmlwdGlvbiI6IiJ9</desc>
+  </metadata>
+  <trk>
+    <trkseg>
+      <trkpt lat="47.373661" lon="8.529598">
+        <ele>491.6</ele>
+        <time>2025-07-31T17:08:00Z</time>
+        <type>WpFlag:17</type>
+        <sat>5</sat>
+        <hdop>1.39999997615814</hdop>
+        <extensions>
+          <gpxtpx:TrackPointExtension>
+            <gpxtpx:speed>0.899999976158142</gpxtpx:speed>
+            <gpxtpx:course>74.9700012207031</gpxtpx:course>
+          </gpxtpx:TrackPointExtension>
+          <mat:TrackPointExtension>
+            <mat:sat_view>13</mat:sat_view>
+          </mat:TrackPointExtension>
+        </extensions>
+      </trkpt>
+      <trkpt lat="47.37365" lon="8.52954">
+        <ele>489.2</ele>
+        <time>2025-07-31T17:08:49Z</time>
+        <type>WpFlag:16</type>
+        <sat>8</sat>
+        <hdop>1.39999997615814</hdop>
+        <extensions>
+          <gpxtpx:TrackPointExtension>
+            <gpxtpx:speed>0.150000005960464</gpxtpx:speed>
+            <gpxtpx:course>274.940002441406</gpxtpx:course>
+          </gpxtpx:TrackPointExtension>
+          <mat:TrackPointExtension>
+            <mat:sat_view>13</mat:sat_view>
+          </mat:TrackPointExtension>
+        </extensions>
+      </trkpt>
+      <trkpt lat="47.37365" lon="8.529581">
+        <ele>492.1</ele>
+        <time>2025-07-31T17:09:20Z</time>
+        <type>WpFlag:2</type>
+        <sat>9</sat>
+        <hdop>1.39999997615814</hdop>
+        <extensions>
+          <gpxtpx:TrackPointExtension>
+            <gpxtpx:speed>0.189999997615814</gpxtpx:speed>
+            <gpxtpx:course>255.130004882813</gpxtpx:course>
+          </gpxtpx:TrackPointExtension>
+          <mat:TrackPointExtension>
+            <mat:sat_view>13</mat:sat_view>
+          </mat:TrackPointExtension>
+        </extensions>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>
