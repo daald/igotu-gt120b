@@ -26,7 +26,7 @@ struct Args {
     orig_sw_workflow: bool,
 
     /// Use the exact same meta format as the original software. By default, the format is more verbose and not base64 encoded
-    #[arg(long, default_value_t = true)]
+    #[arg(long, default_value_t = false)]
     orig_sw_meta: bool,
 
     /// Simulate using specified replay file instead of real hardware access
