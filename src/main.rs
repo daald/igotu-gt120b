@@ -13,6 +13,7 @@ use crate::intf::Intf;
 use crate::intf_bulk::IntfBulk;
 use crate::intf_file::IntfFile;
 use clap::Parser;
+use clap::Subcommand;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -40,10 +41,30 @@ struct Args {
     /// filename part on the right side of the date
     #[arg(short, long, default_value = "")]
     suffix: String,
+
+    #[command(subcommand)]
+    command: Option<SubCommands>,
+}
+
+#[derive(Subcommand, Debug, PartialEq)]
+enum SubCommands {
+    /// Show an example udev rules file
+    Rules,
 }
 
 fn main() {
     let args = Args::parse();
+
+    if Some(SubCommands::Rules) == args.command {
+        println!("{}","
+# /etc/udev/rules.d/51-igotu-b-series.rules
+
+# GT-120b
+SUBSYSTEMS==\"usb\", ATTRS{idVendor}==\"0df7\", ATTRS{idProduct}==\"0920\", GROUP=\"plugdev\", MODE=\"0664\"
+"
+);
+        return;
+    }
 
     let env = Env::new().filter_or("RUST_LOG", "info");
     Builder::from_env(env).init();
