@@ -56,11 +56,11 @@ fn main() {
     let args = Args::parse();
 
     if Some(SubCommands::Rules) == args.command {
-        println!("{}","
+        println!("
 # /etc/udev/rules.d/51-igotu-b-series.rules
 
 # GT-120b
-SUBSYSTEMS==\"usb\", ATTRS{idVendor}==\"0df7\", ATTRS{idProduct}==\"0920\", GROUP=\"plugdev\", MODE=\"0664\"
+SUBSYSTEMS==\"usb\", ATTRS{{idVendor}}==\"0df7\", ATTRS{{idProduct}}==\"0920\", GROUP=\"plugdev\", MODE=\"0664\"
 "
 );
         return;
@@ -71,10 +71,10 @@ SUBSYSTEMS==\"usb\", ATTRS{idVendor}==\"0df7\", ATTRS{idProduct}==\"0920\", GROU
 
     //dbg!(&args);
 
-    let intf: Box<dyn Intf> = if args.sim_file_name.is_none() {
-        Box::new(IntfBulk::new())
-    } else {
+    let intf: Box<dyn Intf> = if args.sim_file_name.is_some() {
         Box::new(IntfFile::new(args.sim_file_name.unwrap()))
+    } else {
+        Box::new(IntfBulk::new())
     };
     let mut comm = CommBulk::new(intf);
 
