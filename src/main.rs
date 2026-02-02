@@ -71,8 +71,8 @@ SUBSYSTEMS==\"usb\", ATTRS{{idVendor}}==\"0df7\", ATTRS{{idProduct}}==\"0920\", 
 
     //dbg!(&args);
 
-    let intf: Box<dyn Intf> = if args.sim_file_name.is_some() {
-        Box::new(IntfFile::new(args.sim_file_name.unwrap()))
+    let intf: Box<dyn Intf> = if let Some(sim_file_name) = args.sim_file_name {
+        Box::new(IntfFile::new(sim_file_name))
     } else {
         Box::new(IntfBulk::new())
     };
